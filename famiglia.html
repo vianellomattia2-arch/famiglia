@@ -1,3 +1,5 @@
+
+Famiglia · HTML
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -7,7 +9,7 @@
 <title>Casa Nostra — Finanze di Famiglia</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
+ 
   :root {
     --bg: #0f1117;
     --surface: #1a1f2e;
@@ -25,10 +27,10 @@
     --font-sans: 'DM Sans', sans-serif;
     --font-mono: 'DM Mono', monospace;
   }
-
+ 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; font-size: 15px; }
-
+ 
   header {
     background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 18px 24px; display: flex; align-items: center; justify-content: space-between;
@@ -50,7 +52,7 @@
   }
   .month-nav button:hover { color: var(--text); border-color: var(--accent); }
   #current-month { font-family: var(--font-mono); font-size: 13px; color: var(--muted); min-width: 110px; text-align: center; }
-
+ 
   nav {
     background: var(--surface); border-bottom: 1px solid var(--border);
     display: flex; padding: 0 24px; gap: 4px; overflow-x: auto;
@@ -63,26 +65,26 @@
   }
   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab:hover:not(.active) { color: var(--text); }
-
+ 
   main { padding: 24px; max-width: 900px; margin: 0 auto; }
   .page { display: none; }
   .page.active { display: block; }
-
+ 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
   .card-title { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
-
+ 
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
   .summary-card .label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
   .summary-card .amount { font-family: var(--font-mono); font-size: 26px; font-weight: 500; line-height: 1; }
   .summary-card .sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
   .green { color: var(--green); } .red { color: var(--red); } .gold { color: var(--gold); } .blue { color: var(--accent); }
-
+ 
   .progress-wrap { margin: 10px 0 4px; }
   .progress-bar { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
   .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
   .progress-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 5px; }
-
+ 
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
   .form-row.single { grid-template-columns: 1fr; }
   @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
@@ -94,7 +96,7 @@
   }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   select option { background: var(--surface2); }
-
+ 
   .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-family: var(--font-sans); font-size: 14px; font-weight: 500; transition: all 0.15s; }
   .btn-primary { background: var(--accent); color: #0f1117; }
   .btn-primary:hover { opacity: 0.85; }
@@ -102,7 +104,7 @@
   .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
   .btn-danger { background: transparent; color: var(--red); border: none; padding: 4px 8px; font-size: 13px; cursor: pointer; }
   .btn-sm { padding: 6px 14px; font-size: 13px; }
-
+ 
   .tx-list { list-style: none; }
   .tx-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .tx-item:last-child { border-bottom: none; }
@@ -112,7 +114,7 @@
   .tx-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .tx-amount { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
   .tx-right { display: flex; align-items: center; gap: 8px; }
-
+ 
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
   .cal-day-name { text-align: center; font-size: 11px; color: var(--muted); font-weight: 600; padding: 4px 0; }
   .cal-day { aspect-ratio: 1; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; transition: background 0.1s; position: relative; }
@@ -121,7 +123,7 @@
   .cal-day.other-month { color: var(--border); }
   .cal-day.has-event::after { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); position: absolute; bottom: 3px; }
   .cal-day.today.has-event::after { background: #0f1117; }
-
+ 
   .event-item { display: flex; align-items: flex-start; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border); }
   .event-item:last-child { border-bottom: none; }
   .event-date-block { text-align: center; min-width: 44px; background: var(--surface2); border-radius: 10px; padding: 8px 6px; flex-shrink: 0; }
@@ -129,20 +131,20 @@
   .event-date-block .emon { font-size: 10px; color: var(--muted); text-transform: uppercase; }
   .event-info .etitle { font-size: 14px; font-weight: 500; }
   .event-info .emeta { font-size: 12px; color: var(--muted); margin-top: 3px; }
-
+ 
   .goal-card { background: var(--surface2); border-radius: 10px; padding: 16px; margin-bottom: 10px; }
   .goal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .goal-name { font-size: 15px; font-weight: 500; }
-
+ 
   .tip { background: linear-gradient(135deg, rgba(108,159,255,0.08), rgba(180,143,255,0.06)); border: 1px solid rgba(108,159,255,0.2); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; font-size: 14px; line-height: 1.6; }
   .tip-header { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; margin-bottom: 6px; }
-
+ 
   .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .section-title { font-family: var(--font-serif); font-size: 20px; color: var(--text); }
-
+ 
   .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
   .empty .empty-icon { font-size: 36px; margin-bottom: 10px; }
-
+ 
   .cat-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
   .cat-row:last-child { border-bottom: none; }
   .cat-icon { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
@@ -151,21 +153,21 @@
   .cat-bar { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
   .cat-bar-fill { height: 100%; border-radius: 99px; }
   .cat-amount { font-family: var(--font-mono); font-size: 13px; color: var(--muted); min-width: 80px; text-align: right; flex-shrink: 0; }
-
+ 
   .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--border); }
   .setting-row:last-child { border-bottom: none; }
   .setting-label { font-size: 14px; }
   .setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-
+ 
   #toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--green); color: #0f1117; padding: 10px 22px; border-radius: 99px; font-size: 14px; font-weight: 600; transition: transform 0.3s ease; z-index: 999; pointer-events: none; }
   #toast.show { transform: translateX(-50%) translateY(0); }
-
+ 
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; padding: 20px; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; }
   .modal-title { font-family: var(--font-serif); font-size: 20px; margin-bottom: 20px; }
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
-
+ 
   #lock-screen { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
   #lock-screen.hidden { display: none; }
   .lock-title { font-family: var(--font-serif); font-size: 28px; text-align: center; }
@@ -178,12 +180,12 @@
   .pin-btn:hover { background: var(--surface2); border-color: var(--accent); }
   .pin-btn:active { transform: scale(0.95); }
   #lock-error { color: var(--red); font-size: 13px; height: 18px; }
-
+ 
   .loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 998; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
   .loading-overlay.hidden { display: none; }
   .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
+ 
   /* LISTE */
   .lista-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
   .lista-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
@@ -212,14 +214,14 @@
 </style>
 </head>
 <body>
-
+ 
 <!-- LOADING -->
 <div class="loading-overlay" id="loading-screen">
   <div style="font-size:36px">🏠</div>
   <div class="spinner"></div>
   <div style="color:var(--muted);font-size:14px;">Connessione in corso...</div>
 </div>
-
+ 
 <!-- LOCK SCREEN -->
 <div id="lock-screen" class="hidden">
   <div style="font-size:40px">🏠</div>
@@ -246,7 +248,7 @@
   </div>
   <div style="font-size:12px;color:var(--muted);margin-top:8px">PIN predefinito: <span style="font-family:var(--font-mono);color:var(--accent)">1234</span></div>
 </div>
-
+ 
 <!-- APP -->
 <header>
   <div class="logo">Casa <span>Nostra</span></div>
@@ -259,7 +261,7 @@
     </div>
   </div>
 </header>
-
+ 
 <nav>
   <button class="tab active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
   <button class="tab" onclick="showPage('entrate',this)">💰 Entrate & Uscite</button>
@@ -269,7 +271,7 @@
   <button class="tab" onclick="showPage('liste',this)">✅ Liste</button>
   <button class="tab" onclick="showPage('impostazioni',this)">⚙️ Impostazioni</button>
 </nav>
-
+ 
 <main>
   <!-- DASHBOARD -->
   <div class="page active" id="page-dashboard">
@@ -278,7 +280,7 @@
     <div class="card"><div class="card-title">Ultime transazioni</div><ul class="tx-list" id="recent-tx"></ul></div>
     <div class="tip"><div class="tip-header">💡 Consiglio del mese</div><div id="tip-text"></div></div>
   </div>
-
+ 
   <!-- ENTRATE & USCITE -->
   <div class="page" id="page-entrate">
     <div class="section-header">
@@ -294,7 +296,7 @@
       <div style="padding:0 16px;"><ul class="tx-list" id="all-tx"></ul></div>
     </div>
   </div>
-
+ 
   <!-- BUDGET -->
   <div class="page" id="page-budget">
     <div class="section-header">
@@ -304,7 +306,7 @@
     <div id="budget-list"></div>
     <div class="tip"><div class="tip-header">📌 Come funziona</div>Imposta un tetto di spesa per ogni categoria. Quando superi l'80% del budget, vedrai un avviso.</div>
   </div>
-
+ 
   <!-- AGENDA -->
   <div class="page" id="page-agenda">
     <div class="section-header">
@@ -314,7 +316,7 @@
     <div class="card"><div class="card-title">Calendario</div><div class="cal-grid" id="cal-grid"></div></div>
     <div class="card"><div class="card-title">Prossimi eventi</div><div id="events-list"></div></div>
   </div>
-
+ 
   <!-- RISPARMI -->
   <div class="page" id="page-risparmi">
     <div class="section-header">
@@ -324,7 +326,7 @@
     <div id="goals-list"></div>
     <div class="tip"><div class="tip-header">🎯 Regola del 50/30/20</div>Il <strong>50%</strong> per i bisogni, il <strong>30%</strong> per i desideri, il <strong>20%</strong> per il risparmio.</div>
   </div>
-
+ 
   <!-- LISTE -->
   <div class="page" id="page-liste">
     <div class="section-header">
@@ -333,7 +335,7 @@
     </div>
     <div id="liste-container"></div>
   </div>
-
+ 
   <!-- IMPOSTAZIONI -->
   <div class="page" id="page-impostazioni">
     <div class="section-title" style="margin-bottom:20px;">Impostazioni</div>
@@ -363,9 +365,9 @@
     </div>
   </div>
 </main>
-
+ 
 <div id="toast"></div>
-
+ 
 <!-- MODAL: Transazione -->
 <div class="modal-overlay" id="tx-modal">
   <div class="modal">
@@ -380,7 +382,7 @@
       <div><label>Data</label><input type="date" id="tx-data"></div>
     </div>
     <div class="form-row">
-      <div><label>Chi paga</label><select id="tx-chi"><option value="entrambi">Entrambi</option><option value="1">Persona 1</option><option value="2">Persona 2</option></select></div>
+      <div><label>Chi paga</label><select id="tx-chi"></select></div>
       <div><label>Note</label><input type="text" id="tx-note" placeholder="..."></div>
     </div>
     <div class="modal-footer">
@@ -389,7 +391,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MODAL: Budget -->
 <div class="modal-overlay" id="budget-modal">
   <div class="modal">
@@ -402,7 +404,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MODAL: Evento -->
 <div class="modal-overlay" id="event-modal">
   <div class="modal">
@@ -422,7 +424,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MODAL: Goal -->
 <div class="modal-overlay" id="goal-modal">
   <div class="modal">
@@ -439,7 +441,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MODAL: PIN -->
 <div class="modal-overlay" id="lista-modal">
   <div class="modal">
@@ -460,7 +462,7 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- MODAL: PIN -->
 <div class="modal-overlay" id="pin-modal">
   <div class="modal">
@@ -475,12 +477,12 @@
     </div>
   </div>
 </div>
-
+ 
 <!-- FIREBASE SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
-
+ 
 const firebaseConfig = {
   apiKey: "AIzaSyBIULZU-xPRvWIeM4Gv0igKotbEX2DzRnc",
   authDomain: "app-family-ff2ff.firebaseapp.com",
@@ -489,10 +491,10 @@ const firebaseConfig = {
   messagingSenderId: "451030699741",
   appId: "1:451030699741:web:0996d1f452cd2d992bd534"
 };
-
+ 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
+ 
 // =====================
 // CATEGORIE
 // =====================
@@ -518,7 +520,7 @@ const CATEGORIES = {
 };
 const ALL_CATS = [...CATEGORIES.uscita, ...CATEGORIES.entrata];
 function catById(id) { return ALL_CATS.find(c=>c.id===id) || {label:'Altro',icon:'📦',color:'#7a7f94'}; }
-
+ 
 // =====================
 // STATO LOCALE
 // =====================
@@ -530,14 +532,14 @@ let state = {
   liste: [],
   settings: { names: ['', ''] }
 };
-
+ 
 // =====================
 // MESE
 // =====================
 const now = new Date();
 let viewYear = now.getFullYear();
 let viewMonth = now.getMonth();
-
+ 
 function monthKey() { return `${viewYear}-${String(viewMonth+1).padStart(2,'0')}`; }
 function updateMonthLabel() {
   const months = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
@@ -550,7 +552,7 @@ window.changeMonth = function(delta) {
   updateMonthLabel();
   listenTransactions();
 };
-
+ 
 // =====================
 // SYNC STATUS
 // =====================
@@ -562,12 +564,12 @@ function setSyncStatus(status) {
   if(status === 'syncing') { dot.classList.add('syncing'); label.textContent = 'Salvataggio...'; }
   if(status === 'error')   { dot.classList.add('error');   label.textContent = 'Offline'; }
 }
-
+ 
 // =====================
 // FIRESTORE LISTENERS (real-time)
 // =====================
 let unsubTx = null;
-
+ 
 function listenTransactions() {
   if(unsubTx) unsubTx();
   const colRef = collection(db, 'transactions', monthKey(), 'items');
@@ -577,7 +579,7 @@ function listenTransactions() {
     setSyncStatus('online');
   }, () => setSyncStatus('error'));
 }
-
+ 
 function listenShared() {
   onSnapshot(doc(db, 'shared', 'budgets'), snap => {
     state.budgets = snap.exists() ? snap.data() : {};
@@ -606,7 +608,7 @@ function listenShared() {
     }
   });
 }
-
+ 
 // =====================
 // FIRESTORE WRITE HELPERS
 // =====================
@@ -618,7 +620,7 @@ async function addTx(tx) {
     setSyncStatus('online');
   } catch(e) { setSyncStatus('error'); throw e; }
 }
-
+ 
 async function deleteTxFirestore(id) {
   setSyncStatus('syncing');
   try {
@@ -626,7 +628,7 @@ async function deleteTxFirestore(id) {
     setSyncStatus('online');
   } catch(e) { setSyncStatus('error'); throw e; }
 }
-
+ 
 async function saveShared(key, data) {
   setSyncStatus('syncing');
   try {
@@ -634,7 +636,7 @@ async function saveShared(key, data) {
     setSyncStatus('online');
   } catch(e) { setSyncStatus('error'); throw e; }
 }
-
+ 
 // =====================
 // PIN (solo locale)
 // =====================
@@ -642,7 +644,7 @@ function getPin() { return localStorage.getItem('cn_pin') || '1234'; }
 function setPin(p) { localStorage.setItem('cn_pin', p); }
 function getPinUnlocked() { return sessionStorage.getItem('cn_unlocked') === '1'; }
 function setPinUnlocked() { sessionStorage.setItem('cn_unlocked', '1'); }
-
+ 
 let pinBuffer = '';
 window.addPin = function(d) {
   if(pinBuffer.length >= 4) return;
@@ -666,7 +668,7 @@ function checkPin() {
     pinBuffer = ''; updatePinDots();
   }
 }
-
+ 
 // =====================
 // INIT
 // =====================
@@ -680,7 +682,7 @@ function init() {
     listenShared();
   }
 }
-
+ 
 // =====================
 // NAVIGATION
 // =====================
@@ -692,7 +694,7 @@ window.showPage = function(name, btn) {
   if(btn) btn.classList.add('active');
   renderPage(name);
 };
-
+ 
 function renderPage(name) {
   if(name==='dashboard')    renderDashboard();
   if(name==='entrate')      renderTxList();
@@ -706,16 +708,24 @@ function renderAll() {
   const active = document.querySelector('.page.active')?.id?.replace('page-','');
   if(active) renderPage(active);
 }
-
+ 
 // =====================
 // DASHBOARD
 // =====================
 function renderDashboard() {
   const txs = state.transactions;
+  const todayStr = today();
+ 
+  // Tutte le entrate del mese
   const entrate = txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  // Tutte le uscite del mese
   const uscite  = txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const saldo   = entrate - uscite;
-
+  // Solo transazioni fino ad oggi
+  const entrateOra = txs.filter(t=>t.tipo==='entrata' && t.data<=todayStr).reduce((a,t)=>a+t.importo,0);
+  const usciteOra  = txs.filter(t=>t.tipo==='uscita'  && t.data<=todayStr).reduce((a,t)=>a+t.importo,0);
+  const saldoOra      = entrateOra - usciteOra;
+  const saldoFineMese = entrate - uscite;
+ 
   const tips = [
     "Il segreto per non sprecare soldi è registrare ogni spesa. La consapevolezza è il primo passo.",
     "Revisionate insieme le spese fisse una volta al mese. Abbonamenti dimenticati e utenze non ottimizzate si trovano in fretta.",
@@ -725,14 +735,14 @@ function renderDashboard() {
     "Le piccole spese quotidiane si sommano: un caffè al giorno sono ~500€ l'anno.",
   ];
   document.getElementById('tip-text').textContent = tips[new Date().getMonth() % tips.length];
-
+ 
   document.getElementById('summary-grid').innerHTML = `
-    <div class="summary-card"><div class="label">Entrate</div><div class="amount green">€${fmt(entrate)}</div><div class="sub">questo mese</div></div>
-    <div class="summary-card"><div class="label">Uscite</div><div class="amount red">€${fmt(uscite)}</div><div class="sub">questo mese</div></div>
-    <div class="summary-card"><div class="label">Saldo</div><div class="amount ${saldo>=0?'green':'red'}">€${fmt(saldo)}</div><div class="sub">${saldo>=0?'disponibile':'deficit'}</div></div>
-    <div class="summary-card"><div class="label">Transazioni</div><div class="amount blue">${txs.length}</div><div class="sub">registrate</div></div>
+    <div class="summary-card"><div class="label">Disponibile ora</div><div class="amount ${saldoOra>=0?'green':'red'}">€${fmt(saldoOra)}</div><div class="sub">entrate − uscite ad oggi</div></div>
+    <div class="summary-card"><div class="label">A fine mese</div><div class="amount ${saldoFineMese>=0?'green':'red'}">€${fmt(saldoFineMese)}</div><div class="sub">incluse spese programmate</div></div>
+    <div class="summary-card"><div class="label">Entrate mese</div><div class="amount green">€${fmt(entrate)}</div><div class="sub">questo mese</div></div>
+    <div class="summary-card"><div class="label">Uscite mese</div><div class="amount red">€${fmt(uscite)}</div><div class="sub">questo mese</div></div>
   `;
-
+ 
   const bycat = {};
   txs.filter(t=>t.tipo==='uscita').forEach(t=>{ bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo; });
   const sorted = Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
@@ -743,13 +753,13 @@ function renderDashboard() {
     const cat=catById(id); const pct=(amt/max)*100;
     return `<div class="cat-row"><span class="cat-icon">${cat.icon}</span><span class="cat-name">${cat.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${cat.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;
   }).join('');
-
+ 
   const recent = [...txs].sort((a,b)=>new Date(b.data)-new Date(a.data)).slice(0,5);
   const ul = document.getElementById('recent-tx');
   if(!recent.length) ul.innerHTML='<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione</div>';
   else ul.innerHTML = recent.map(t=>txHtml(t,false)).join('');
 }
-
+ 
 // =====================
 // TRANSACTIONS
 // =====================
@@ -768,7 +778,7 @@ function txHtml(t, showDelete=false) {
     </div>
   </li>`;
 }
-
+ 
 function renderTxList() {
   const txs = state.transactions;
   const filtered = currentFilter==='tutte' ? txs : txs.filter(t=>t.tipo===currentFilter);
@@ -777,24 +787,33 @@ function renderTxList() {
   if(!sorted.length) { ul.innerHTML='<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione. Aggiungine una!</div>'; return; }
   ul.innerHTML = sorted.map(t=>txHtml(t,true)).join('');
 }
-
+ 
 window.filterTx = function(type, btn) {
   currentFilter = type;
   document.querySelectorAll('#page-entrate .tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   renderTxList();
 };
-
+ 
 window.deleteTx = async function(id) {
   if(!confirm('Eliminare questa transazione?')) return;
   await deleteTxFirestore(id);
   toast('Transazione eliminata');
 };
-
+ 
 let editingTxId = null;
 window.openTxModal = function(id=null) {
   editingTxId = id;
   populateCatSelect('tx-cat','uscita');
+  // Popola "Chi paga" con i nomi reali
+  const names = state.settings.names || ['',''];
+  const n1 = names[0] || 'Persona 1';
+  const n2 = names[1] || 'Persona 2';
+  document.getElementById('tx-chi').innerHTML = `
+    <option value="entrambi">👫 Entrambi</option>
+    <option value="1">${n1}</option>
+    <option value="2">${n2}</option>
+  `;
   document.getElementById('tx-data').value = today();
   document.getElementById('tx-importo').value='';
   document.getElementById('tx-desc').value='';
@@ -803,9 +822,9 @@ window.openTxModal = function(id=null) {
   document.getElementById('tx-modal-title').textContent='Nuova transazione';
   document.getElementById('tx-modal').classList.add('open');
 };
-
+ 
 window.closeTxModal = function() { document.getElementById('tx-modal').classList.remove('open'); };
-
+ 
 window.saveTx = async function() {
   const tipo = document.getElementById('tx-tipo').value;
   const importo = parseFloat(document.getElementById('tx-importo').value);
@@ -819,7 +838,7 @@ window.saveTx = async function() {
   closeTxModal();
   toast('Transazione salvata ✓');
 };
-
+ 
 // =====================
 // BUDGET
 // =====================
@@ -853,13 +872,13 @@ function renderBudget() {
     </div>`;
   }).join('');
 }
-
+ 
 window.openBudgetModal = function() {
   populateCatSelect('budget-cat','uscita');
   document.getElementById('budget-amount').value='';
   document.getElementById('budget-modal').classList.add('open');
 };
-
+ 
 window.saveBudget = async function() {
   const cat = document.getElementById('budget-cat').value;
   const amount = parseFloat(document.getElementById('budget-amount').value);
@@ -869,12 +888,12 @@ window.saveBudget = async function() {
   document.getElementById('budget-modal').classList.remove('open');
   toast('Budget impostato ✓');
 };
-
+ 
 // =====================
 // AGENDA
 // =====================
 function renderAgenda() { renderCalendar(); renderEventsList(); }
-
+ 
 function renderCalendar() {
   const eventDays = new Set(state.events.map(e=>e.data));
   const firstDay = new Date(viewYear, viewMonth, 1);
@@ -890,7 +909,7 @@ function renderCalendar() {
   }
   document.getElementById('cal-grid').innerHTML=html;
 }
-
+ 
 function renderEventsList() {
   const mk = `${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;
   const evs = state.events.filter(e=>e.data.startsWith(mk)).sort((a,b)=>a.data.localeCompare(b.data));
@@ -906,7 +925,7 @@ function renderEventsList() {
     </div>`;
   }).join('');
 }
-
+ 
 window.openEventModal = function() {
   document.getElementById('ev-title').value='';
   document.getElementById('ev-date').value=today();
@@ -914,7 +933,7 @@ window.openEventModal = function() {
   document.getElementById('ev-note').value='';
   document.getElementById('event-modal').classList.add('open');
 };
-
+ 
 window.saveEvent = async function() {
   const title=document.getElementById('ev-title').value.trim();
   const data=document.getElementById('ev-date').value;
@@ -927,13 +946,13 @@ window.saveEvent = async function() {
   document.getElementById('event-modal').classList.remove('open');
   toast('Evento salvato ✓');
 };
-
+ 
 window.deleteEvent = async function(id) {
   if(!confirm('Eliminare questo evento?')) return;
   await saveShared('events',{list:state.events.filter(e=>e.id!==id)});
   toast('Evento eliminato');
 };
-
+ 
 // =====================
 // GOALS
 // =====================
@@ -961,7 +980,7 @@ function renderGoals() {
     </div>`;
   }).join('');
 }
-
+ 
 window.addToGoal = async function(id) {
   const input=document.getElementById('add-'+id);
   const amt=parseFloat(input.value);
@@ -970,13 +989,13 @@ window.addToGoal = async function(id) {
   await saveShared('goals',{list});
   toast(`+€${fmt(amt)} aggiunto ✓`);
 };
-
+ 
 window.deleteGoal = async function(id) {
   if(!confirm('Eliminare questo obiettivo?')) return;
   await saveShared('goals',{list:state.goals.filter(g=>g.id!==id)});
   toast('Obiettivo eliminato');
 };
-
+ 
 window.openGoalModal = function() {
   document.getElementById('goal-name').value='';
   document.getElementById('goal-target').value='';
@@ -984,7 +1003,7 @@ window.openGoalModal = function() {
   document.getElementById('goal-emoji').value='';
   document.getElementById('goal-modal').classList.add('open');
 };
-
+ 
 window.saveGoal = async function() {
   const name=document.getElementById('goal-name').value.trim();
   const target=parseFloat(document.getElementById('goal-target').value);
@@ -996,7 +1015,7 @@ window.saveGoal = async function() {
   document.getElementById('goal-modal').classList.remove('open');
   toast('Obiettivo creato ✓');
 };
-
+ 
 // =====================
 // IMPOSTAZIONI
 // =====================
@@ -1007,7 +1026,7 @@ function renderSettings() {
   if(document.activeElement!==n1) n1.value=n[0]||'';
   if(document.activeElement!==n2) n2.value=n[1]||'';
 }
-
+ 
 let namesTimer;
 window.saveNames = function() {
   clearTimeout(namesTimer);
@@ -1017,7 +1036,7 @@ window.saveNames = function() {
     await saveShared('settings',{...state.settings,names:[n1,n2]});
   },800);
 };
-
+ 
 window.openPinModal = function() {
   document.getElementById('pin-old').value='';
   document.getElementById('pin-new').value='';
@@ -1025,7 +1044,7 @@ window.openPinModal = function() {
   document.getElementById('pin-modal-error').textContent='';
   document.getElementById('pin-modal').classList.add('open');
 };
-
+ 
 window.savePin = function() {
   const old=document.getElementById('pin-old').value;
   const newp=document.getElementById('pin-new').value;
@@ -1038,7 +1057,7 @@ window.savePin = function() {
   document.getElementById('pin-modal').classList.remove('open');
   toast('PIN aggiornato ✓');
 };
-
+ 
 // =====================
 // LISTE
 // =====================
@@ -1085,13 +1104,13 @@ function renderListe() {
     </div>`;
   }).join('');
 }
-
+ 
 window.openListaModal = function() {
   document.getElementById('lista-name').value='';
   document.getElementById('lista-emoji').value='';
   document.getElementById('lista-modal').classList.add('open');
 };
-
+ 
 window.saveLista = async function() {
   const name = document.getElementById('lista-name').value.trim();
   const emoji = document.getElementById('lista-emoji').value.trim() || '📋';
@@ -1102,13 +1121,13 @@ window.saveLista = async function() {
   document.getElementById('lista-modal').classList.remove('open');
   toast('Lista creata ✓');
 };
-
+ 
 window.deleteLista = async function(id) {
   if(!confirm('Eliminare questa lista?')) return;
   await saveShared('liste', {list: state.liste.filter(l=>l.id!==id)});
   toast('Lista eliminata');
 };
-
+ 
 window.addItem = async function(listaId) {
   const input = document.getElementById('new-item-'+listaId);
   const text = input.value.trim();
@@ -1120,7 +1139,7 @@ window.addItem = async function(listaId) {
   await saveShared('liste', {list});
   input.value='';
 };
-
+ 
 window.toggleItem = async function(listaId, itemId) {
   const list = state.liste.map(l => {
     if(l.id !== listaId) return l;
@@ -1128,7 +1147,7 @@ window.toggleItem = async function(listaId, itemId) {
   });
   await saveShared('liste', {list});
 };
-
+ 
 window.deleteItem = async function(listaId, itemId) {
   const list = state.liste.map(l => {
     if(l.id !== listaId) return l;
@@ -1136,7 +1155,7 @@ window.deleteItem = async function(listaId, itemId) {
   });
   await saveShared('liste', {list});
 };
-
+ 
 window.clearDoneLista = async function(listaId) {
   const list = state.liste.map(l => {
     if(l.id !== listaId) return l;
@@ -1145,7 +1164,7 @@ window.clearDoneLista = async function(listaId) {
   await saveShared('liste', {list});
   toast('Elementi completati rimossi');
 };
-
+ 
 // =====================
 // UTILS
 // =====================
@@ -1153,13 +1172,13 @@ function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(
 function fmt(n) { return Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
 function today() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function formatDate(s) { if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
-
+ 
 window.populateCatSelect = function(id, tipo) {
   const sel=document.getElementById(id);
   const cats=CATEGORIES[tipo]||CATEGORIES.uscita;
   sel.innerHTML=cats.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
 };
-
+ 
 let toastTimer;
 function toast(msg, type='ok') {
   const el=document.getElementById('toast');
@@ -1170,11 +1189,11 @@ function toast(msg, type='ok') {
   toastTimer=setTimeout(()=>el.classList.remove('show'),2500);
 }
 window.toast = toast;
-
+ 
 document.querySelectorAll('.modal-overlay').forEach(o=>{
   o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
 });
-
+ 
 // START
 init();
 </script>
