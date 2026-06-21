@@ -123,11 +123,12 @@
   /* CALENDARIO VISTE */
   .ev-pill{display:flex;align-items:center;gap:4px;padding:2px 6px;border-radius:99px;font-size:10px;font-weight:600;margin-bottom:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
   .cal-day.has-event::after{display:none;} /* sostituito da pills */
-  .week-col{border-right:1px solid var(--border);min-height:400px;flex:1;}
+  .week-col{border-right:1px solid var(--border);min-height:300px;min-width:100px;flex:0 0 100px;}
   .week-col:last-child{border-right:none;}
-  .week-col-header{text-align:center;padding:8px 4px;font-size:11px;font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);}
+  .week-col-header{text-align:center;padding:8px 4px;font-size:11px;font-weight:600;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);cursor:pointer;}
   .week-col-header.today{color:var(--accent);}
   .week-col-body{padding:4px;}
+  .week-scroll-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--border);border-radius:10px;}
   .day-event-block{border-radius:8px;padding:8px 10px;margin-bottom:6px;border-left:3px solid;}
   .day-event-block .ev-time{font-size:11px;font-weight:700;margin-bottom:2px;}
   .day-event-block .ev-title{font-size:13px;font-weight:500;}
@@ -466,6 +467,12 @@
       </div>
       <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <select id="filter-cat" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1;min-width:130px"><option value="">Tutte le categorie</option></select>
+        <select id="filter-chi" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1;min-width:100px">
+          <option value="">Tutte le persone</option>
+          <option value="1" id="filter-chi-1">Persona 1</option>
+          <option value="2" id="filter-chi-2">Persona 2</option>
+          <option value="entrambi">Entrambi</option>
+        </select>
         <input type="date" id="filter-date-from" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1" placeholder="Dal">
         <input type="date" id="filter-date-to" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1" placeholder="Al">
         <button class="btn btn-ghost btn-sm" onclick="clearTxFilters()" style="font-size:12px">✕ Reset</button>
@@ -692,6 +699,12 @@
           <input id="carta-limite" type="number" placeholder="1500" style="width:120px;font-size:13px;padding:6px 10px;" oninput="saveCartaLimite()">
         </div>
       </div>
+      <div class="card">
+        <div class="card-title">🔔 Preferenze notifiche</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Le notifiche delle transazioni sono sempre attive. Scegli quali altri eventi vuoi ricevere.</div>
+        <div id="notif-prefs-list"></div>
+        <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="saveNotifPrefs()">Salva preferenze</button></div>
+      </div>
       <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo su questo dispositivo.</div>
       <div class="card" style="border:1px solid var(--accent);background:linear-gradient(135deg,rgba(108,159,255,.06),rgba(180,143,255,.04))">
         <div class="card-title">© Crediti</div>
@@ -830,6 +843,17 @@
   </div>
 </div>
 
+<!-- MODAL DRILL-DOWN TRANSAZIONI -->
+<div class="modal-overlay" id="drilldown-modal">
+  <div class="modal" style="max-width:540px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="modal-title" id="drilldown-title" style="margin-bottom:0">Transazioni</div>
+      <button onclick="document.getElementById('drilldown-modal').classList.remove('open')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div id="drilldown-summary" style="margin-bottom:12px"></div>
+    <ul class="tx-list" id="drilldown-list"></ul>
+  </div>
+</div>
 <div class="modal-overlay" id="spesa-contanti-modal">
   <div class="modal">
     <div class="modal-title">💸 Spesa con contanti</div>
@@ -922,8 +946,23 @@
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import{getFirestore,doc,setDoc,onSnapshot,collection,addDoc,deleteDoc,updateDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import{getMessaging,getToken,onMessage}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging.js";
+import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 const firebaseConfig={apiKey:"AIzaSyBIULZU-xPRvWIeM4Gv0igKotbEX2DzRnc",authDomain:"app-family-ff2ff.firebaseapp.com",projectId:"app-family-ff2ff",storageBucket:"app-family-ff2ff.firebasestorage.app",messagingSenderId:"451030699741",appId:"1:451030699741:web:0996d1f452cd2d992bd534"};
-const app=initializeApp(firebaseConfig);const db=getFirestore(app);
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const auth=getAuth(app);
+
+// ===== AUTENTICAZIONE ANONIMA =====
+// Ogni dispositivo riceve un UID anonimo univoco — senza questo Firebase nega tutto
+let authReady=false;
+signInAnonymously(auth).catch(e=>console.warn('Auth:',e));
+onAuthStateChanged(auth,user=>{
+  if(user&&!authReady){
+    authReady=true;
+    // Salva UID per riferimento (non usato nei dati, solo per debug)
+    sessionStorage.setItem('cn_uid',user.uid);
+  }
+});
 
 // ===== FCM NOTIFICHE =====
 // IMPORTANTE: sostituisci VAPID_KEY_QUI con la chiave da Firebase Console → Impostazioni → Cloud Messaging → Web Push certificates
@@ -1036,32 +1075,61 @@ function renderThemePicker(){
       </div>`).join('');
   });
 }
+function getProfileKey(key){
+  // Usa chiave localStorage specifica per profilo
+  const pid=sessionStorage.getItem('cn_profile_id')||'default';
+  return`${key}_${pid}`;
+}
 window.applyTheme=function(id){
   document.body.setAttribute('data-theme',id);
-  localStorage.setItem('cn_theme',id);
+  localStorage.setItem(getProfileKey('cn_theme'),id);
   renderThemePicker();
-  saveShared('settings',{...state.settings,theme:id});
+  // NON salva su Firebase — tema è personale per profilo
 };
-function loadTheme(){document.body.setAttribute('data-theme',localStorage.getItem('cn_theme')||'dark-midnight');}
-
-// ===== FONT =====
+function loadTheme(){
+  const t=localStorage.getItem(getProfileKey('cn_theme'))||localStorage.getItem('cn_theme')||'dark-midnight';
+  document.body.setAttribute('data-theme',t);
+}
 function applyFont(id){
   const f=FONTS.find(x=>x.id===id)||FONTS[0];
   document.documentElement.style.setProperty('--font-sans',f.sans);
   document.documentElement.style.setProperty('--font-serif',f.serif);
   document.documentElement.style.setProperty('--font-mono',f.mono);
-  localStorage.setItem('cn_font',id);
+  localStorage.setItem(getProfileKey('cn_font'),id);
 }
-function loadFont(){applyFont(localStorage.getItem('cn_font')||'dmsans');}
+function loadFont(){applyFont(localStorage.getItem(getProfileKey('cn_font'))||localStorage.getItem('cn_font')||'dmsans');}
 window.setFont=function(id){applyFont(id);renderFontPicker();};
 function renderFontPicker(){
   const el=document.getElementById('font-picker');if(!el)return;
-  const cur=localStorage.getItem('cn_font')||'dmsans';
+  const cur=localStorage.getItem(getProfileKey('cn_font'))||'dmsans';
   el.innerHTML=FONTS.map(f=>`
     <div onclick="setFont('${f.id}')" style="background:var(--surface2);border:2px solid ${cur===f.id?'var(--accent)':'var(--border)'};border-radius:12px;padding:12px;cursor:pointer;transition:all .15s">
       <div style="font-family:${f.sans};font-size:16px;font-weight:600;color:${cur===f.id?'var(--accent)':'var(--text)'};margin-bottom:4px">${f.name}</div>
       <div style="font-family:${f.sans};font-size:11px;color:var(--muted)">${f.label}</div>
       <div style="font-family:${f.sans};font-size:12px;color:var(--muted);margin-top:4px">Aa Bb Cc 123</div>
+    </div>`).join('');
+}
+function applyLayout(l){
+  document.body.classList.remove('layout-compact','layout-spacious');
+  if(l==='compact')document.body.classList.add('layout-compact');
+  if(l==='spacious')document.body.classList.add('layout-spacious');
+  localStorage.setItem(getProfileKey('cn_layout'),l);
+}
+function loadLayout(){applyLayout(localStorage.getItem(getProfileKey('cn_layout'))||localStorage.getItem('cn_layout')||'standard');}
+window.setLayout=function(l){applyLayout(l);renderLayoutPicker();};
+function renderLayoutPicker(){
+  const el=document.getElementById('layout-picker');if(!el)return;
+  const cur=localStorage.getItem(getProfileKey('cn_layout'))||'standard';
+  const opts=[
+    {id:'compact',label:'Compatto',icon:'▤',desc:'Più contenuto visibile'},
+    {id:'standard',label:'Standard',icon:'▦',desc:'Bilanciato (default)'},
+    {id:'spacious',label:'Ampio',icon:'▣',desc:'Più respiro, testo grande'}
+  ];
+  el.innerHTML=opts.map(o=>`
+    <div onclick="setLayout('${o.id}')" style="flex:1;background:var(--surface2);border:2px solid ${cur===o.id?'var(--accent)':'var(--border)'};border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s">
+      <div style="font-size:24px;margin-bottom:6px">${o.icon}</div>
+      <div style="font-size:13px;font-weight:600;color:${cur===o.id?'var(--accent)':'var(--text)'}">${o.label}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">${o.desc}</div>
     </div>`).join('');
 }
 
@@ -1074,6 +1142,7 @@ const CATEGORIES={
     {id:'spesa',label:'Spesa alimentare',icon:'🛒',color:'#4fd89e',group:'Cibo'},{id:'ristorante',label:'Ristorante / Cena',icon:'🍽️',color:'#ffb347',group:'Cibo'},{id:'bar_caffe',label:'Bar / Caffè',icon:'☕',color:'#c8a070',group:'Cibo'},{id:'delivery',label:'Delivery / Takeaway',icon:'🛵',color:'#ff6b7a',group:'Cibo'},
     {id:'carburante',label:'Carburante',icon:'⛽',color:'#f5c842',group:'Trasporti'},{id:'assicurazione',label:'Assicurazione auto',icon:'🚗',color:'#ffb347',group:'Trasporti'},{id:'bollo',label:'Bollo / Tasse auto',icon:'📋',color:'#aaa',group:'Trasporti'},{id:'trasporto_pub',label:'Mezzi pubblici',icon:'🚌',color:'#6bf5c8',group:'Trasporti'},{id:'taxi',label:'Taxi / Ridesharing',icon:'🚕',color:'#f5c842',group:'Trasporti'},
     {id:'fin_auto',label:'Finanziamento Auto',icon:'🚙',color:'#6c9fff',group:'Finanziamenti'},{id:'fin_mobili',label:'Finanziamento Mobili',icon:'🛋️',color:'#c8a070',group:'Finanziamenti'},{id:'fin_altro',label:'Finanziamento Altro',icon:'📑',color:'#aaa',group:'Finanziamenti'},
+    {id:'carta_credito',label:'Rimborso carta credito',icon:'💜',color:'#b48fff',group:'Finanziamenti'},
     {id:'medico',label:'Visite mediche',icon:'🏥',color:'#ff6b7a',group:'Salute'},{id:'farmacia',label:'Farmacia',icon:'💊',color:'#ff9f6b',group:'Salute'},{id:'dentista',label:'Dentista',icon:'🦷',color:'#fff',group:'Salute'},
     {id:'svago',label:'Uscite / Svago',icon:'🎭',color:'#b48fff',group:'Svago'},{id:'vacanze',label:'Vacanze / Viaggi',icon:'✈️',color:'#6c9fff',group:'Svago'},{id:'sport_prat',label:'Sport praticato',icon:'⚽',color:'#4fd89e',group:'Svago'},{id:'libri',label:'Libri / Cultura',icon:'📚',color:'#b48fff',group:'Svago'},
     {id:'abbigliamento',label:'Abbigliamento',icon:'👗',color:'#ff9f6b',group:'Shopping'},{id:'elettronica',label:'Elettronica',icon:'📱',color:'#6c9fff',group:'Shopping'},{id:'casa_arredi',label:'Casa / Arredi',icon:'🛋️',color:'#c8a070',group:'Shopping'},
@@ -1103,7 +1172,7 @@ let isChildMode=false,pinTarget='adult',charts={};
 function getProfiles(){
   const raw=localStorage.getItem('cn_profiles');
   if(raw)try{return JSON.parse(raw);}catch(e){}
-  // Prima volta: crea profili di default e salvali subito
+  // Prima volta: profili senza PIN visibile — l'utente deve impostarli
   const defaults=[
     {id:'adulto1',name:'Adulto 1',emoji:'👤',ruolo:'adulto',pin:'1234'},
     {id:'figlio1',name:'Figlio',emoji:'👦',ruolo:'figlio',pin:'0000'}
@@ -1201,10 +1270,12 @@ async function checkPin(){
       document.getElementById('main-nav').style.display='';document.getElementById('child-nav').style.display='none';
       document.getElementById('month-nav-wrap').style.display='';
       const fab=document.getElementById('fab-add');if(fab)fab.classList.remove('hidden');
+      // Ricarica tema/font/layout specifici del profilo ora che il profile ID è disponibile
+      loadTheme();loadFont();loadLayout();
       listenTransactions();listenShared();
-      initNotifiche(); // Avvia notifiche push
+      initNotifiche();
     }
-  },1200);
+  },1000);
 }
 
 // ===== MESE =====
@@ -1241,26 +1312,32 @@ function listenShared(){
   onSnapshot(doc(db,'shared','note'),snap=>{state.note=snap.exists()?(snap.data().list||[]):[];renderPage('note');});
   onSnapshot(collection(db,'note_private'),snap=>{state.notePrivate=snap.docs.map(d=>({id:d.id,...d.data()})).filter(n=>n.autore===sessionStorage.getItem('cn_profile_name'));renderPage('note');});
   onSnapshot(doc(db,'shared','portafoglio'),snap=>{state.portafoglio=snap.exists()?snap.data():{io:0,lei:0};renderPortafoglio();});
-  // Ascolta notifiche in tempo reale (funziona anche senza VAPID key)
+  // Ascolta notifiche — ignora quelle già esistenti al caricamento
+  let notificheInit=false;
   onSnapshot(collection(db,'notifiche'),snap=>{
     snap.docChanges().forEach(change=>{
-      if(change.type==='added'){
+      if(change.type==='added'&&notificheInit){
         const n=change.doc.data();
-        // Mostra solo se non è mia (evita di notificarmi le mie stesse transazioni)
         const mio=sessionStorage.getItem('cn_profile_name');
         if(n.autore&&n.autore!==mio){
           const segno=n.tipo==='entrata'?'+':'-';
           const icon=n.catIcon||'';
           toast(`${n.emoji} ${n.autore}: ${segno}€${fmt(n.importo||0)} — ${n.desc||''} ${icon}`);
+          if(Notification.permission==='granted'){
+            try{new Notification(`${n.emoji} ${n.autore}`,{
+              body:`${segno}€${fmt(n.importo||0)} — ${n.desc||''} ${icon}`,
+              icon:'/famiglia/icon-192.png',tag:'tx-'+change.doc.id
+            });}catch(e){}
+          }
         }
       }
     });
+    notificheInit=true;
   });
   onSnapshot(doc(db,'shared','settings'),snap=>{
     if(snap.exists()){
       state.settings={...state.settings,...snap.data()};
-      const t=state.settings.theme||'dark-midnight';
-      if(document.body.getAttribute('data-theme')!==t){document.body.setAttribute('data-theme',t);localStorage.setItem('cn_theme',t);}
+      // NON sincronizzare tema/font da Firebase — sono per profilo locale
       const n=state.settings.names||['',''];
       const n1=document.getElementById('name1'),n2=document.getElementById('name2');
       if(n1&&document.activeElement!==n1)n1.value=n[0]||'';
@@ -1344,20 +1421,25 @@ function renderReminders(){
 // ===== INIT =====
 function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
 function init(){
-  loadTheme();
-  loadFont();
-  loadLayout();
-  updateMonthLabel();
-  // Nascondi subito lo schermo di caricamento — non aspettiamo Firebase
-  document.getElementById('loading-screen').classList.add('hidden');
-  // Mostra subito login o app
+  loadTheme();loadFont();loadLayout();updateMonthLabel();
+  // Aspetta autenticazione anonima Firebase (max 5 secondi poi procede comunque)
+  let authWait=0;
+  const waitAuth=setInterval(()=>{
+    authWait+=200;
+    if(authReady||authWait>=5000){
+      clearInterval(waitAuth);
+      document.getElementById('loading-screen').classList.add('hidden');
+      startApp();
+    }
+  },200);
+}
+function startApp(){
   if(getPinUnlocked()){
     const mode=sessionStorage.getItem('cn_mode')||'adulto';
     const name=sessionStorage.getItem('cn_profile_name')||'';
     const emoji=sessionStorage.getItem('cn_profile_emoji')||'👤';
     isChildMode=mode==='figlio';
     document.getElementById('child-banner').innerHTML=`${emoji} ${name}${isChildMode?' — Vista limitata':''}`;
-    // FAB visibile subito su dashboard
     const fab=document.getElementById('fab-add');
     if(fab&&!isChildMode)fab.classList.remove('hidden');
     if(isChildMode){
@@ -1370,15 +1452,15 @@ function init(){
     }else{
       document.getElementById('main-nav').style.display='';
       document.getElementById('child-nav').style.display='none';
-      listenTransactions();
-      listenShared();
+      loadTheme();loadFont();loadLayout();
+      listenTransactions();listenShared();
+      initNotifiche();
     }
   }else{
     renderLockProfiles();
     document.getElementById('lock-screen').classList.remove('hidden');
   }
 }
-// Chiamata immediata appena il DOM è pronto
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',init);
 }else{
@@ -1577,6 +1659,31 @@ window.saveSpesaContanti=async function(){
   toast(`💸 €${fmt(importo)} spesi — portafoglio aggiornato ✓`);
 };
 
+// ===== DRILL-DOWN TRANSAZIONI =====
+window.drillDown=function(tipo,filtro,label){
+  const txs=state.transactions;
+  let filtered;
+  if(tipo==='categoria') filtered=txs.filter(t=>t.categoria===filtro);
+  else if(tipo==='tipo_entrata') filtered=txs.filter(t=>t.tipo==='entrata');
+  else if(tipo==='tipo_uscita') filtered=txs.filter(t=>t.tipo==='uscita');
+  else if(tipo==='metodo') filtered=txs.filter(t=>t.metodo===filtro&&t.tipo==='uscita');
+  else filtered=txs;
+  filtered=[...filtered].sort((a,b)=>new Date(b.data)-new Date(a.data));
+  const totale=filtered.reduce((a,t)=>a+(t.tipo==='entrata'?t.importo:-t.importo),0);
+  const entrateSum=filtered.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const usciteSum=filtered.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  document.getElementById('drilldown-title').textContent=label;
+  document.getElementById('drilldown-summary').innerHTML=`
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      ${entrateSum>0?`<div style="background:rgba(79,216,158,.1);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--green)">+€${fmt(entrateSum)}</div>`:''}
+      ${usciteSum>0?`<div style="background:rgba(255,107,122,.1);border:1px solid var(--red);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--red)">-€${fmt(usciteSum)}</div>`:''}
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${filtered.length} transazioni</div>
+    </div>`;
+  const ul=document.getElementById('drilldown-list');
+  ul.innerHTML=filtered.length?filtered.map(t=>txHtml(t,false)).join(''):'<div class="empty" style="padding:20px">Nessuna transazione</div>';
+  document.getElementById('drilldown-modal').classList.add('open');
+};
+
 function renderDashboard(){
   const txs=state.transactions,td=today();
   const mkStart=monthKey()+'-01';const mkEnd=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-31`;
@@ -1594,12 +1701,15 @@ function renderDashboard(){
   const dayOfYear=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5);
   document.getElementById('tip-text').textContent=tips[dayOfYear%tips.length];
   document.getElementById('summary-grid').innerHTML=`
-    <div class="summary-card"><div class="label">Saldo ad oggi</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">entrate − uscite fino a oggi</div></div>
-    <div class="summary-card"><div class="label">Saldo a fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
-    <div class="summary-card"><div class="label">Entrate ad oggi</div><div class="amount green">€${fmt(entrate)}</div><div class="sub">incassate fino a oggi</div></div>
-    <div class="summary-card"><div class="label">Uscite ad oggi</div><div class="amount red">€${fmt(uscite)}</div><div class="sub">pagate fino a oggi</div></div>`;
-  const cw=document.getElementById('carta-summary-wrap');
-  if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid"><div class="carta-card"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div><div class="sub">su €${fmt(limCarta)} limite</div></div><div class="carta-card"><div class="label">💜 Disponibile carta</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div><div class="sub">${Math.round(p)}% utilizzato</div></div></div><div class="card" style="margin-top:-6px;padding:12px 18px;margin-bottom:16px;"><div class="progress-bar"><div class="progress-fill" style="width:${p}%;background:${bc}"></div></div><div class="progress-label"><span>Carta</span><span>€${fmt(usatoCarta)} / €${fmt(limCarta)}</span></div></div>`;}else cw.innerHTML='';
+    <div class="summary-card" onclick="drillDown('tipo_entrata','','Entrate ad oggi')" style="cursor:pointer" title="Clicca per vedere le entrate">
+      <div class="label">Saldo ad oggi</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">entrate − uscite fino a oggi</div></div>
+    <div class="summary-card" onclick="drillDown('tipo_uscita','','Uscite programmate mese')" style="cursor:pointer" title="Clicca per vedere le uscite">
+      <div class="label">Saldo a fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
+    <div class="summary-card" onclick="drillDown('tipo_entrata','','Entrate')" style="cursor:pointer">
+      <div class="label">Entrate ad oggi</div><div class="amount green">€${fmt(entrate)}</div><div class="sub">incassate fino a oggi</div></div>
+    <div class="summary-card" onclick="drillDown('tipo_uscita','','Uscite')" style="cursor:pointer">
+      <div class="label">Uscite ad oggi</div><div class="amount red">€${fmt(uscite)}</div><div class="sub">pagate fino a oggi</div></div>`;
+  if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid"><div class="carta-card" onclick="drillDown('metodo','carta','💜 Spese carta di credito')" style="cursor:pointer"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div><div class="sub">su €${fmt(limCarta)} limite</div></div><div class="carta-card" onclick="drillDown('metodo','carta','💜 Spese carta di credito')" style="cursor:pointer"><div class="label">💜 Disponibile carta</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div><div class="sub">${Math.round(p)}% utilizzato</div></div></div><div class="card" style="margin-top:-6px;padding:12px 18px;margin-bottom:16px;"><div class="progress-bar"><div class="progress-fill" style="width:${p}%;background:${bc}"></div></div><div class="progress-label"><span>Carta</span><span>€${fmt(usatoCarta)} / €${fmt(limCarta)}</span></div></div>`;}else cw.innerHTML='';
   renderReminders();
   renderRicorrentiDash();
   renderPortafoglio();
@@ -1607,7 +1717,7 @@ function renderDashboard(){
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;
   const bd=document.getElementById('cat-breakdown');
   if(!sorted.length)bd.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Nessuna spesa</div>';
-  else bd.innerHTML=sorted.map(([id,amt])=>{const c=catById(id),p=(amt/max)*100;return`<div class="cat-row"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${p}%;background:${c.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;}).join('');
+  else bd.innerHTML=sorted.map(([id,amt])=>{const c=catById(id),p=(amt/max)*100;return`<div class="cat-row" onclick="drillDown('categoria','${id}','${c.icon} ${c.label}')" style="cursor:pointer" title="Clicca per vedere le transazioni"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${p}%;background:${c.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;}).join('');
   const recent=[...txs].sort((a,b)=>new Date(b.data)-new Date(a.data)).slice(0,5);
   const ul=document.getElementById('recent-tx');
   ul.innerHTML=recent.length?recent.map(t=>txHtml(t,false)).join(''):'<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione</div>';
@@ -1632,15 +1742,22 @@ function populateCatFilter(){
   const allCats=[...CATEGORIES.uscita,...CATEGORIES.entrata];
   sel.innerHTML='<option value="">Tutte le categorie</option>'+allCats.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
   sel.value=cur;
+  // Aggiorna nomi nel filtro chi
+  const names=state.settings.names||['Persona 1','Persona 2'];
+  const c1=document.getElementById('filter-chi-1'),c2=document.getElementById('filter-chi-2');
+  if(c1)c1.textContent=names[0]||'Persona 1';
+  if(c2)c2.textContent=names[1]||'Persona 2';
 }
 function renderTxList(){
   populateCatFilter();
   const txs=state.transactions;
   const catFilter=document.getElementById('filter-cat')?.value||'';
+  const chiFilter=document.getElementById('filter-chi')?.value||'';
   const dateFrom=document.getElementById('filter-date-from')?.value||'';
   const dateTo=document.getElementById('filter-date-to')?.value||'';
   let f=currentFilter==='tutte'?txs:currentFilter==='conto'?txs.filter(t=>t.metodo!=='carta'):currentFilter==='carta'?txs.filter(t=>t.metodo==='carta'):txs.filter(t=>t.tipo===currentFilter);
   if(catFilter)f=f.filter(t=>t.categoria===catFilter);
+  if(chiFilter)f=f.filter(t=>t.chi===chiFilter);
   if(dateFrom)f=f.filter(t=>t.data>=dateFrom);
   if(dateTo)f=f.filter(t=>t.data<=dateTo);
   const sorted=[...f].sort((a,b)=>new Date(b.data)-new Date(a.data));
@@ -1648,8 +1765,9 @@ function renderTxList(){
   ul.innerHTML=sorted.length?sorted.map(t=>txHtml(t,true)).join(''):'<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione per i filtri selezionati.</div>';
 }
 window.clearTxFilters=function(){
-  const fc=document.getElementById('filter-cat'),fd=document.getElementById('filter-date-from'),ft=document.getElementById('filter-date-to');
-  if(fc)fc.value='';if(fd)fd.value='';if(ft)ft.value='';renderTxList();
+  const fc=document.getElementById('filter-cat'),fchi=document.getElementById('filter-chi');
+  const fd=document.getElementById('filter-date-from'),ft=document.getElementById('filter-date-to');
+  if(fc)fc.value='';if(fchi)fchi.value='';if(fd)fd.value='';if(ft)ft.value='';renderTxList();
 };
 window.filterTx=function(type,btn){currentFilter=type;document.querySelectorAll('#page-entrate .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderTxList();};
 window.deleteTx=async function(id){if(!confirm('Eliminare?'))return;await deleteTxFS(id);toast('Transazione eliminata');};
@@ -1947,7 +2065,7 @@ function renderWeek(){
   const td=today();
   document.getElementById('week-label').textContent=`${dates[0].getDate()}/${dates[0].getMonth()+1} — ${dates[6].getDate()}/${dates[6].getMonth()+1}/${dates[6].getFullYear()}`;
   const wrap=document.getElementById('week-grid');
-  wrap.innerHTML=`<div style="display:flex;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+  wrap.innerHTML=`<div class="week-scroll-wrap"><div style="display:flex;min-width:${7*100}px">
     ${dates.map((d,i)=>{
       const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const evs=getEventsForDay(ds);
@@ -1957,7 +2075,7 @@ function renderWeek(){
         <div class="week-col-body">${evs.length?evs.map(e=>{const c=evCat(e.tipo);return`<div class="ev-pill" style="background:${c.bg};color:${c.color};cursor:pointer" onclick="event.stopPropagation();${e.isRicorrente?'':(`editEventById('${e.id||''}')`)+''}">${c.icon} ${e.title||e.desc||''}</div>`;}).join(''):''}<div style="min-height:40px;cursor:pointer" onclick="selectCalDay('${ds}')" title="Aggiungi evento"></div></div>
       </div>`;
     }).join('')}
-  </div>`;
+  </div></div>`;
 }
 
 function renderDay(){
@@ -2522,6 +2640,7 @@ window.showSettingsTab=function(name,btn){
   if(name==='profili')renderSettingsProfiles();
   if(name==='accessi')renderAccessiLog();
   if(name==='aspetto'){renderThemePicker();renderLayoutPicker();renderFontPicker();}
+  if(name==='altro'){renderNotifPrefs();}
 };
 
 function renderSettingsProfiles(){
@@ -2544,6 +2663,42 @@ function renderSettingsProfiles(){
   const addBtn=document.getElementById('add-profile-btn-wrap');
   if(addBtn)addBtn.style.display=profiles.length>=4?'none':'block';
 }
+// ===== PREFERENZE NOTIFICHE =====
+const NOTIF_TYPES=[
+  {id:'lista',    label:'Nuova lista o elemento aggiunto',  icon:'✅', default:false},
+  {id:'nota',     label:'Nuova nota creata',                icon:'📝', default:false},
+  {id:'evento',   label:'Nuovo appuntamento in agenda',     icon:'📅', default:true},
+  {id:'obiettivo',label:'Obiettivo di risparmio aggiornato',icon:'🎯', default:false},
+  {id:'buoni',    label:'Buoni pasto registrati',           icon:'🎟️', default:false},
+  {id:'prelievo', label:'Prelievo bancomat effettuato',     icon:'🏧', default:true},
+];
+function getNotifPrefs(){
+  const raw=localStorage.getItem(getProfileKey('cn_notif_prefs'));
+  if(raw)try{return JSON.parse(raw);}catch(e){}
+  const def={};NOTIF_TYPES.forEach(t=>{def[t.id]=t.default;});return def;
+}
+function renderNotifPrefs(){
+  const el=document.getElementById('notif-prefs-list');if(!el)return;
+  const prefs=getNotifPrefs();
+  el.innerHTML=`<div class="setting-row" style="padding:8px 0"><div><div class="setting-label">💰 Nuove transazioni</div><div class="setting-sub">Sempre attive — obbligatorie</div></div><div style="font-size:12px;color:var(--green);font-weight:600">✓ Attive</div></div>`+
+  NOTIF_TYPES.map(t=>`
+    <div class="setting-row" style="padding:8px 0">
+      <div><div class="setting-label">${t.icon} ${t.label}</div></div>
+      <input type="checkbox" id="notif-${t.id}" ${prefs[t.id]?'checked':''} style="width:20px;height:20px;accent-color:var(--accent);cursor:pointer">
+    </div>`).join('');
+}
+window.saveNotifPrefs=function(){
+  const prefs={};
+  NOTIF_TYPES.forEach(t=>{prefs[t.id]=document.getElementById('notif-'+t.id)?.checked||false;});
+  localStorage.setItem(getProfileKey('cn_notif_prefs'),JSON.stringify(prefs));
+  toast('Preferenze notifiche salvate ✓');
+};
+function shouldNotify(tipo){
+  if(tipo==='transazione')return true; // sempre
+  const prefs=getNotifPrefs();
+  return prefs[tipo]||false;
+}
+
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});},800);};
 window.saveCartaLimite=function(){clearTimeout(cartaTimer);cartaTimer=setTimeout(async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');},800);};
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
