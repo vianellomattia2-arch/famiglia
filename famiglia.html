@@ -684,7 +684,13 @@ function listenShared(){
   onSnapshot(doc(db,'shared','events'),snap=>{state.events=snap.exists()?(snap.data().list||[]):[];renderPage('agenda');renderReminders();});
   onSnapshot(doc(db,'shared','goals'),snap=>{state.goals=snap.exists()?(snap.data().list||[]):[];renderPage('risparmi');});
   onSnapshot(doc(db,'shared','liste'),snap=>{state.liste=snap.exists()?(snap.data().list||[]):[];renderPage('liste');});
-  onSnapshot(doc(db,'shared','ricorrenti'),snap=>{state.ricorrenti=snap.exists()?(snap.data().list||[]):[];renderPage('ricorrenti');checkRicorrenti();});
+  onSnapshot(doc(db,'shared','ricorrenti'),snap=>{
+    state.ricorrenti=snap.exists()?(snap.data().list||[]):[];
+    renderRicorrentiDash();
+    checkRicorrenti();
+    const active=document.querySelector('.page.active')?.id;
+    if(active==='page-ricorrenti')renderPage('ricorrenti');
+  });
   onSnapshot(doc(db,'shared','saldi'),snap=>{state.saldi=snap.exists()?(snap.data().list||[]):[];renderPage('saldi');});
   onSnapshot(doc(db,'shared','birthdays'),snap=>{state.birthdays=snap.exists()?(snap.data().list||[]):[];renderPage('agenda');renderReminders();});
   onSnapshot(doc(db,'shared','buoni'),snap=>{state.buoni=snap.exists()?(snap.data().list||[]):[];renderPage('buoni');});
