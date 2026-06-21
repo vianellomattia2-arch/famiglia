@@ -1471,29 +1471,6 @@ window.sidebarNav=function(page,btn){
 window.doLogout=function(){sessionStorage.clear();location.reload();};
 
 // ===== LAYOUT =====
-function applyLayout(l){
-  document.body.classList.remove('layout-compact','layout-spacious');
-  if(l==='compact')document.body.classList.add('layout-compact');
-  if(l==='spacious')document.body.classList.add('layout-spacious');
-  localStorage.setItem('cn_layout',l);
-}
-function loadLayout(){applyLayout(localStorage.getItem('cn_layout')||'standard');}
-window.setLayout=function(l){applyLayout(l);renderLayoutPicker();};
-function renderLayoutPicker(){
-  const el=document.getElementById('layout-picker');if(!el)return;
-  const cur=localStorage.getItem('cn_layout')||'standard';
-  const opts=[
-    {id:'compact',label:'Compatto',icon:'▤',desc:'Più contenuto visibile'},
-    {id:'standard',label:'Standard',icon:'▦',desc:'Bilanciato (default)'},
-    {id:'spacious',label:'Ampio',icon:'▣',desc:'Più respiro, testo grande'}
-  ];
-  el.innerHTML=opts.map(o=>`
-    <div onclick="setLayout('${o.id}')" style="flex:1;background:var(--surface2);border:2px solid ${cur===o.id?'var(--accent)':'var(--border)'};border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center;transition:all .15s">
-      <div style="font-size:24px;margin-bottom:6px">${o.icon}</div>
-      <div style="font-size:13px;font-weight:600;color:${cur===o.id?'var(--accent)':'var(--text)'}">${o.label}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">${o.desc}</div>
-    </div>`).join('');
-}
 
 // ===== NAV =====
 let currentFilter='tutte';
