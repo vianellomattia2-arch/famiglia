@@ -1629,13 +1629,14 @@ window.drillDown=function(tipo,filtro,label){
   const usciteSum=filtered.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   document.getElementById('drilldown-title').textContent=label;
   document.getElementById('drilldown-summary').innerHTML=`
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       ${entrateSum>0?`<div style="background:rgba(79,216,158,.1);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--green)">+€${fmt(entrateSum)}</div>`:''}
       ${usciteSum>0?`<div style="background:rgba(255,107,122,.1);border:1px solid var(--red);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--red)">-€${fmt(usciteSum)}</div>`:''}
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${filtered.length} transazioni</div>
-    </div>`;
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${filtered.length} transazioni questo mese</div>
+    </div>
+    ${filtered.length===0&&tipo==='categoria'?`<div style="font-size:12px;color:var(--muted);padding:4px 0">💡 Nessuna transazione registrata questo mese per questa categoria. Se è una spesa ricorrente, apparirà quando verrà inserita automaticamente.</div>`:''}`;
   const ul=document.getElementById('drilldown-list');
-  ul.innerHTML=filtered.length?filtered.map(t=>txHtml(t,false)).join(''):'<div class="empty" style="padding:20px">Nessuna transazione</div>';
+  ul.innerHTML=filtered.length?filtered.map(t=>txHtml(t,false)).join(''):'<div class="empty" style="padding:20px">Nessuna transazione questo mese</div>';
   document.getElementById('drilldown-modal').classList.add('open');
 };
 
@@ -2213,11 +2214,22 @@ function renderRicorrentiDash(){
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   el.innerHTML=
     `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="flex:1;min-width:120px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Uscite fisse/mese</div><div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--red)">-€${fmt(totUscite)}</div></div>
-      ${totEntrate>0?`<div style="flex:1;min-width:120px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Entrate fisse/mese</div><div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--green)">+€${fmt(totEntrate)}</div></div>`:''}
+      <div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('tipo_uscita','','🔁 Tutte le uscite ricorrenti')" title="Clicca per vedere le transazioni">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Uscite fisse/mese</div>
+        <div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--red)">-€${fmt(totUscite)}</div>
+      </div>
+      ${totEntrate>0?`<div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('tipo_entrata','','🔁 Tutte le entrate ricorrenti')" title="Clicca per vedere le transazioni"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Entrate fisse/mese</div><div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--green)">+€${fmt(totEntrate)}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);align-self:center">${active.length} voci attive</div>
     </div>`+
-    (sorted.length?sorted.map(([id,amt])=>{const c=catById(id),pct=totUscite>0?Math.min((amt/totUscite)*100,100):0;return`<div class="cat-row"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${c.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;}).join(''):'');
+    (sorted.length?sorted.map(([id,amt])=>{
+      const c=catById(id),pct=totUscite>0?Math.min((amt/totUscite)*100,100):0;
+      return`<div class="cat-row" onclick="drillDown('categoria','${id}','${c.icon} ${c.label}')" style="cursor:pointer" title="Clicca per vedere le transazioni">
+        <span class="cat-icon">${c.icon}</span>
+        <span class="cat-name">${c.label}</span>
+        <div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%;background:${c.color}"></div></div></div>
+        <span class="cat-amount">€${fmt(amt)}</span>
+      </div>`;
+    }).join(''):'');
 }
 
 // ===== RICORRENTI (aggiornata con data fine e in agenda) =====
