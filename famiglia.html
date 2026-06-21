@@ -590,6 +590,24 @@
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeTxModal()">Annulla</button><button class="btn btn-primary" onclick="saveTx()">Salva</button></div>
   </div>
 </div>
+<div class="modal-overlay" id="spesa-contanti-modal">
+  <div class="modal">
+    <div class="modal-title">💸 Spesa con contanti</div>
+    <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px" id="sc-chi-label">—</div>
+      <div class="progress-bar"><div class="progress-fill" id="sc-disponibile-bar" style="width:100%;background:var(--green)"></div></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px" id="sc-rimanente">Rimanente: —</div>
+    </div>
+    <div class="form-row"><div><label>Importo (€)</label><input type="number" id="sc-importo" placeholder="0.00" min="0" step="0.01"></div><div><label>Data</label><input type="date" id="sc-data"></div></div>
+    <div class="form-row single"><label>Descrizione</label><input type="text" id="sc-desc" placeholder="Es. Spesa al mercato"></div>
+    <div class="form-row"><div><label>Categoria</label><select id="sc-cat"></select></div><div><label>Chi paga</label><select id="sc-chi"></select></div></div>
+    <div class="form-row single"><label>Note</label><input type="text" id="sc-note" placeholder="..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('spesa-contanti-modal').classList.remove('open')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveSpesaContanti()">Registra spesa</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="budget-modal">
   <div class="modal"><div class="modal-title">Imposta budget</div><div class="form-row single"><label>Categoria</label><select id="budget-cat"></select></div><div class="form-row single"><label>Budget mensile (€)</label><input type="number" id="budget-amount" placeholder="0.00" min="0" step="0.01"></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('budget-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveBudget()">Salva</button></div></div>
 </div>
@@ -1120,14 +1138,13 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 // ===== DASHBOARD =====
 // ===== PORTAFOGLIO CONTANTI =====
+
+
 function renderPortafoglio(){
   const wrap=document.getElementById('portafoglio-wrap');if(!wrap)return;
-  const names=state.settings.names||['Io','Lei/Lui'];
+  const names=state.settings.names||['Io','Ilaria'];
   const p=state.portafoglio||{io:0,lei:0};
   const totale=(p.io||0)+(p.lei||0);
-  if(totale===0&&(p.io||0)===0&&(p.lei||0)===0){
-    // Mostra comunque un riquadro minimale
-  }
   wrap.innerHTML=`
     <div class="card" style="margin-bottom:10px">
       <div class="card-title">💵 Contanti in portafoglio</div>
@@ -1135,28 +1152,28 @@ function renderPortafoglio(){
         <div class="portafoglio-card">
           <div class="label">💵 ${names[0]||'Io'}</div>
           <div class="amount">€${fmt(p.io||0)}</div>
-          <div style="display:flex;gap:6px;margin-top:10px">
-            <input type="number" id="pf-io-add" placeholder="€" style="width:80px;font-size:12px;padding:5px 8px" step="0.01" min="0">
-            <button class="btn btn-ghost btn-sm" onclick="aggiungiContanti('io')" style="font-size:12px">+ Prelievo</button>
-            <button class="btn btn-ghost btn-sm" onclick="usaContanti('io')" style="font-size:12px;color:var(--red)">− Usa</button>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <input type="number" id="pf-io-add" placeholder="€" style="width:72px;font-size:12px;padding:5px 8px" step="0.01" min="0">
+            <button class="btn btn-ghost btn-sm" onclick="aggiungiContanti('io')" style="font-size:11px">🏧 Preleva</button>
+            <button class="btn btn-ghost btn-sm" onclick="apriSpesaContanti('io')" style="font-size:11px;color:var(--red)">💸 Spendi</button>
           </div>
         </div>
         <div class="portafoglio-card">
-          <div class="label">💵 ${names[1]||'Lei/Lui'}</div>
+          <div class="label">💵 ${names[1]||'Ilaria'}</div>
           <div class="amount">€${fmt(p.lei||0)}</div>
-          <div style="display:flex;gap:6px;margin-top:10px">
-            <input type="number" id="pf-lei-add" placeholder="€" style="width:80px;font-size:12px;padding:5px 8px" step="0.01" min="0">
-            <button class="btn btn-ghost btn-sm" onclick="aggiungiContanti('lei')" style="font-size:12px">+ Prelievo</button>
-            <button class="btn btn-ghost btn-sm" onclick="usaContanti('lei')" style="font-size:12px;color:var(--red)">− Usa</button>
+          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+            <input type="number" id="pf-lei-add" placeholder="€" style="width:72px;font-size:12px;padding:5px 8px" step="0.01" min="0">
+            <button class="btn btn-ghost btn-sm" onclick="aggiungiContanti('lei')" style="font-size:11px">🏧 Preleva</button>
+            <button class="btn btn-ghost btn-sm" onclick="apriSpesaContanti('lei')" style="font-size:11px;color:var(--red)">💸 Spendi</button>
           </div>
         </div>
         <div class="portafoglio-card" style="background:linear-gradient(135deg,rgba(245,200,66,.15),rgba(79,216,158,.08));border-color:rgba(245,200,66,.4)">
           <div class="label">👛 Totale contanti</div>
           <div class="amount">€${fmt(totale)}</div>
-          <div class="sub">sommati ai saldi conto</div>
+          <div class="sub">in casa tra voi due</div>
         </div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:6px">Usa <strong>+ Prelievo</strong> quando prendi soldi dal bancomat (il conto viene scalato automaticamente). Usa <strong>− Usa</strong> quando spendi i contanti.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">🏧 <strong>Preleva</strong>: scala dal conto e aggiunge al portafoglio &nbsp;·&nbsp; 💸 <strong>Spendi</strong>: registra la spesa e scala dal portafoglio</div>
     </div>`;
 }
 
@@ -1164,27 +1181,71 @@ window.aggiungiContanti=async function(chi){
   const input=document.getElementById(`pf-${chi}-add`);
   const amt=parseFloat(input?.value)||0;
   if(!amt||amt<=0){toast('Inserisci un importo','err');return;}
-  const names=state.settings.names||['Io','Lei/Lui'];
-  const nome=chi==='io'?names[0]||'Io':names[1]||'Lei/Lui';
-  // Registra uscita dal conto come prelievo
+  const names=state.settings.names||['Io','Ilaria'];
+  const nome=chi==='io'?names[0]||'Io':names[1]||'Ilaria';
   await addTx({tipo:'uscita',importo:amt,desc:`Prelievo bancomat — ${nome}`,categoria:'prelievo',data:today(),metodo:'conto',chi:chi==='io'?'1':'2',note:'Prelievo contanti'});
-  // Aggiorna portafoglio
   const p={...state.portafoglio};p[chi]=(p[chi]||0)+amt;
   await saveShared('portafoglio',p);
   if(input)input.value='';
-  toast(`+€${fmt(amt)} in portafoglio ${nome} ✓`);
+  toast(`+€${fmt(amt)} nel portafoglio di ${nome} ✓`);
 };
 
-window.usaContanti=async function(chi){
-  const input=document.getElementById(`pf-${chi}-add`);
-  const amt=parseFloat(input?.value)||0;
-  if(!amt||amt<=0){toast('Inserisci un importo','err');return;}
+// Apre il modal spesa contanti precompilato
+window.apriSpesaContanti=function(chi){
+  const names=state.settings.names||['Io','Ilaria'];
+  const nome=chi==='io'?names[0]||'Io':names[1]||'Ilaria';
+  const p=state.portafoglio||{io:0,lei:0};
+  const disponibile=p[chi]||0;
+  if(disponibile<=0){toast(`Nessun contante nel portafoglio di ${nome}`,'err');return;}
+  // Salva chi sta spendendo per usarlo in saveSpesaContanti
+  document.getElementById('spesa-contanti-modal').dataset.chi=chi;
+  document.getElementById('spesa-contanti-modal').dataset.disponibile=disponibile;
+  // Precompila
+  document.getElementById('sc-chi-label').textContent=`${nome} — disponibile: €${fmt(disponibile)}`;
+  document.getElementById('sc-importo').value='';
+  document.getElementById('sc-desc').value='';
+  document.getElementById('sc-note').value='';
+  document.getElementById('sc-data').value=today();
+  document.getElementById('sc-chi').innerHTML=`<option value="entrambi">👫 Entrambi</option><option value="1">${names[0]||'Io'}</option><option value="2">${names[1]||'Ilaria'}</option>`;
+  document.getElementById('sc-chi').value=chi==='io'?'1':'2';
+  populateCatSelect('sc-cat','uscita');
+  document.getElementById('sc-disponibile-bar').style.width='100%';
+  document.getElementById('sc-rimanente').textContent=`Rimanente: €${fmt(disponibile)}`;
+  document.getElementById('sc-importo').oninput=function(){
+    const amt=parseFloat(this.value)||0;
+    const rem=disponibile-amt;
+    const pct=Math.max(0,Math.min((rem/disponibile)*100,100));
+    document.getElementById('sc-disponibile-bar').style.width=pct+'%';
+    document.getElementById('sc-disponibile-bar').style.background=rem<0?'var(--red)':rem<disponibile*0.2?'var(--gold)':'var(--green)';
+    document.getElementById('sc-rimanente').textContent=rem<0?`⚠️ Supera il disponibile di €${fmt(Math.abs(rem))}`:`Rimanente: €${fmt(Math.max(rem,0))}`;
+    document.getElementById('sc-rimanente').style.color=rem<0?'var(--red)':'var(--muted)';
+  };
+  document.getElementById('spesa-contanti-modal').classList.add('open');
+};
+
+window.saveSpesaContanti=async function(){
+  const modal=document.getElementById('spesa-contanti-modal');
+  const chi=modal.dataset.chi;
+  const disponibile=parseFloat(modal.dataset.disponibile)||0;
+  const importo=parseFloat(document.getElementById('sc-importo').value)||0;
+  const desc=document.getElementById('sc-desc').value.trim();
+  const cat=document.getElementById('sc-cat').value;
+  const data=document.getElementById('sc-data').value;
+  const note=document.getElementById('sc-note').value.trim();
+  const chiPaga=document.getElementById('sc-chi').value;
+  if(!importo||!desc){toast('Compila importo e descrizione','err');return;}
+  if(importo>disponibile){toast(`Importo superiore al disponibile (€${fmt(disponibile)})','err`);return;}
+  if(!data){toast('Inserisci la data','err');return;}
+  // Registra transazione con metodo contanti
+  const metodo=chi==='io'?'contanti_io':'contanti_lei';
+  await addTx({tipo:'uscita',importo,desc,categoria:cat,data,metodo,chi:chiPaga,note});
+  // Scala dal portafoglio
   const p={...state.portafoglio};
-  if((p[chi]||0)<amt){toast('Contanti insufficienti nel portafoglio','err');return;}
-  p[chi]=(p[chi]||0)-amt;
+  p[chi]=Math.round(((p[chi]||0)-importo)*100)/100;
   await saveShared('portafoglio',p);
-  if(input)input.value='';
-  toast(`-€${fmt(amt)} dal portafoglio ✓`);
+  await inviaNotificaTransazione({tipo:'uscita',importo,desc,categoria:cat});
+  modal.classList.remove('open');
+  toast(`💸 €${fmt(importo)} spesi — portafoglio aggiornato ✓`);
 };
 
 function renderDashboard(){
