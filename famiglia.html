@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -373,40 +373,65 @@
  
   <!-- IMPOSTAZIONI -->
   <div class="page" id="page-impostazioni">
-    <div class="section-title" style="margin-bottom:20px;">Impostazioni</div>
-    <div class="card">
-      <div class="card-title">Aspetto</div>
-      <div class="theme-section"><div class="theme-section-title">🌙 Temi scuri</div><div class="theme-grid" id="dark-themes"></div></div>
-      <div class="theme-section" style="margin-bottom:0"><div class="theme-section-title">☀️ Temi chiari</div><div class="theme-grid" id="light-themes"></div></div>
+    <div class="section-title" style="margin-bottom:16px;">Impostazioni</div>
+ 
+    <!-- Sub-tab nav -->
+    <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;overflow-x:auto">
+      <button class="tab active" id="stab-aspetto" onclick="showSettingsTab('aspetto',this)" style="border-radius:8px;flex:1">🎨 Aspetto</button>
+      <button class="tab" id="stab-profili" onclick="showSettingsTab('profili',this)" style="border-radius:8px;flex:1">👤 Profili</button>
+      <button class="tab" id="stab-accessi" onclick="showSettingsTab('accessi',this)" style="border-radius:8px;flex:1">🔓 Accessi</button>
+      <button class="tab" id="stab-altro" onclick="showSettingsTab('altro',this)" style="border-radius:8px;flex:1">⚙️ Altro</button>
     </div>
-    <div class="card">
-      <div class="card-title">Profilo</div>
-      <div class="setting-row">
-        <div><div class="setting-label">Nomi della coppia</div></div>
-        <div style="display:flex;gap:8px;">
-          <input id="name1" placeholder="Nome 1" style="width:110px;font-size:13px;padding:6px 10px;" oninput="saveNames()">
-          <input id="name2" placeholder="Nome 2" style="width:110px;font-size:13px;padding:6px 10px;" oninput="saveNames()">
+ 
+    <!-- TAB: Aspetto -->
+    <div id="stab-content-aspetto">
+      <div class="card">
+        <div class="card-title">Tema colori</div>
+        <div class="theme-section"><div class="theme-section-title">🌙 Temi scuri</div><div class="theme-grid" id="dark-themes"></div></div>
+        <div class="theme-section" style="margin-bottom:0"><div class="theme-section-title">☀️ Temi chiari</div><div class="theme-grid" id="light-themes"></div></div>
+      </div>
+    </div>
+ 
+    <!-- TAB: Profili -->
+    <div id="stab-content-profili" style="display:none">
+      <div class="tip" style="margin-bottom:16px">
+        <div class="tip-header">👤 Come funzionano i profili</div>
+        Ogni membro della famiglia ha il suo profilo con nome, emoji e PIN personale (4-6 cifre). Chi ha ruolo <strong>Figlio</strong> vede solo Liste, Agenda e Famiglia.
+      </div>
+      <div id="profiles-list-cards" style="margin-bottom:12px"></div>
+      <div id="add-profile-btn-wrap"><button class="btn btn-primary btn-sm" onclick="openProfileModal()">+ Aggiungi profilo</button></div>
+    </div>
+ 
+    <!-- TAB: Accessi -->
+    <div id="stab-content-accessi" style="display:none">
+      <div class="card">
+        <div class="card-title">🔓 Chi ha aperto l'app</div>
+        <div id="accessi-list"><div style="color:var(--muted);font-size:13px;padding:10px 0">Caricamento...</div></div>
+      </div>
+    </div>
+ 
+    <!-- TAB: Altro -->
+    <div id="stab-content-altro" style="display:none">
+      <div class="card">
+        <div class="card-title">Nomi della coppia</div>
+        <div class="setting-row">
+          <div><div class="setting-label">Nome 1</div></div>
+          <input id="name1" placeholder="Es. Mattia" style="width:130px;font-size:13px;padding:6px 10px;" oninput="saveNames()">
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label">Nome 2</div></div>
+          <input id="name2" placeholder="Es. Laura" style="width:130px;font-size:13px;padding:6px 10px;" oninput="saveNames()">
         </div>
       </div>
-    </div>
-    <div class="card">
-      <div class="card-title">Carta di credito</div>
-      <div class="setting-row">
-        <div><div class="setting-label">Limite mensile carta (€)</div><div class="setting-sub">Disponibilità massima ogni mese</div></div>
-        <input id="carta-limite" type="number" placeholder="1500" style="width:120px;font-size:13px;padding:6px 10px;" oninput="saveCartaLimite()">
+      <div class="card">
+        <div class="card-title">Carta di credito</div>
+        <div class="setting-row">
+          <div><div class="setting-label">Limite mensile carta (€)</div><div class="setting-sub">Disponibilità massima ogni mese</div></div>
+          <input id="carta-limite" type="number" placeholder="1500" style="width:120px;font-size:13px;padding:6px 10px;" oninput="saveCartaLimite()">
+        </div>
       </div>
+      <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo su questo dispositivo.</div>
     </div>
-    <div class="card">
-      <div class="card-title">👤 Profili utente</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Massimo 4 profili. Ogni profilo ha nome, emoji, PIN e ruolo. Il ruolo <strong>Figlio</strong> limita la vista automaticamente.</div>
-      <div id="profiles-list"></div>
-      <div id="add-profile-btn-wrap" style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="openProfileModal()">+ Aggiungi profilo</button></div>
-    </div>
-    <div class="card">
-      <div class="card-title">🔓 Accessi recenti</div>
-      <div id="accessi-list"><div style="color:var(--muted);font-size:13px">Caricamento...</div></div>
-    </div>
-    <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo sul dispositivo.</div>
   </div>
 </main>
  
@@ -534,15 +559,16 @@ let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],
 let isChildMode=false,pinTarget='adult',charts={};
  
 // ===== PROFILI =====
-// Profili salvati in localStorage (PIN locali per sicurezza, non su Firebase)
 function getProfiles(){
   const raw=localStorage.getItem('cn_profiles');
   if(raw)try{return JSON.parse(raw);}catch(e){}
-  // Profili di default (compatibilità con versione precedente)
-  return[
+  // Prima volta: crea profili di default e salvali subito
+  const defaults=[
     {id:'adulto1',name:'Adulto 1',emoji:'👤',ruolo:'adulto',pin:'1234'},
     {id:'figlio1',name:'Figlio',emoji:'👦',ruolo:'figlio',pin:'0000'}
   ];
+  localStorage.setItem('cn_profiles',JSON.stringify(defaults));
+  return defaults;
 }
 function saveProfiles(profiles){localStorage.setItem('cn_profiles',JSON.stringify(profiles));}
  
@@ -1270,13 +1296,50 @@ async function renderAccessiLog(){
 // ===== IMPOSTAZIONI =====
 function renderSettings(){
   const n=state.settings.names||['',''];const n1=document.getElementById('name1'),n2=document.getElementById('name2');
-  if(document.activeElement!==n1)n1.value=n[0]||'';if(document.activeElement!==n2)n2.value=n[1]||'';
-  const cl=document.getElementById('carta-limite');if(document.activeElement!==cl)cl.value=state.settings.cartaLimite||'';
-  renderSettingsProfiles();
-  renderAccessiLog();
+  if(n1&&document.activeElement!==n1)n1.value=n[0]||'';
+  if(n2&&document.activeElement!==n2)n2.value=n[1]||'';
+  const cl=document.getElementById('carta-limite');if(cl&&document.activeElement!==cl)cl.value=state.settings.cartaLimite||'';
+  // Render the active sub-tab
+  const activeStab=document.querySelector('[id^="stab-content-"]:not([style*="none"])');
+  const activeName=activeStab?.id?.replace('stab-content-','');
+  if(activeName==='profili')renderSettingsProfiles();
+  else if(activeName==='accessi')renderAccessiLog();
+  else renderThemePicker(); // default: aspetto
 }
  
-let namesTimer,cartaTimer;
+// ===== IMPOSTAZIONI SUB-TAB =====
+window.showSettingsTab=function(name,btn){
+  ['aspetto','profili','accessi','altro'].forEach(t=>{
+    const el=document.getElementById('stab-content-'+t);
+    if(el)el.style.display=t===name?'block':'none';
+    const b=document.getElementById('stab-'+t);
+    if(b)b.classList.toggle('active',t===name);
+  });
+  if(name==='profili')renderSettingsProfiles();
+  if(name==='accessi')renderAccessiLog();
+  if(name==='aspetto')renderThemePicker();
+};
+ 
+function renderSettingsProfiles(){
+  const profiles=getProfiles();
+  const el=document.getElementById('profiles-list-cards');
+  if(!el)return;
+  el.innerHTML=profiles.map(p=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
+      <div style="width:48px;height:48px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">${p.emoji||'👤'}</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:600">${p.name}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${p.ruolo==='figlio'?'👦 Vista limitata — solo Liste, Agenda, Famiglia':'👨‍💼 Accesso completo a tutte le sezioni'}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">PIN: ${'•'.repeat(p.pin.length)} (${p.pin.length} cifre)</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openProfileModal('${p.id}')">✏️ Modifica</button>
+        <button class="btn-danger" onclick="deleteProfile('${p.id}')" style="font-size:12px;text-align:center">✕ Elimina</button>
+      </div>
+    </div>`).join('');
+  const addBtn=document.getElementById('add-profile-btn-wrap');
+  if(addBtn)addBtn.style.display=profiles.length>=4?'none':'block';
+}
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});},800);};
 window.saveCartaLimite=function(){clearTimeout(cartaTimer);cartaTimer=setTimeout(async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');},800);};
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
