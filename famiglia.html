@@ -946,23 +946,9 @@
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import{getFirestore,doc,setDoc,onSnapshot,collection,addDoc,deleteDoc,updateDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import{getMessaging,getToken,onMessage}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging.js";
-import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 const firebaseConfig={apiKey:"AIzaSyBIULZU-xPRvWIeM4Gv0igKotbEX2DzRnc",authDomain:"app-family-ff2ff.firebaseapp.com",projectId:"app-family-ff2ff",storageBucket:"app-family-ff2ff.firebasestorage.app",messagingSenderId:"451030699741",appId:"1:451030699741:web:0996d1f452cd2d992bd534"};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
-const auth=getAuth(app);
-
-// ===== AUTENTICAZIONE ANONIMA =====
-// Ogni dispositivo riceve un UID anonimo univoco — senza questo Firebase nega tutto
-let authReady=false;
-signInAnonymously(auth).catch(e=>console.warn('Auth:',e));
-onAuthStateChanged(auth,user=>{
-  if(user&&!authReady){
-    authReady=true;
-    // Salva UID per riferimento (non usato nei dati, solo per debug)
-    sessionStorage.setItem('cn_uid',user.uid);
-  }
-});
 
 // ===== FCM NOTIFICHE =====
 // IMPORTANTE: sostituisci VAPID_KEY_QUI con la chiave da Firebase Console → Impostazioni → Cloud Messaging → Web Push certificates
@@ -1422,16 +1408,8 @@ function renderReminders(){
 function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
 function init(){
   loadTheme();loadFont();loadLayout();updateMonthLabel();
-  // Aspetta autenticazione anonima Firebase (max 5 secondi poi procede comunque)
-  let authWait=0;
-  const waitAuth=setInterval(()=>{
-    authWait+=200;
-    if(authReady||authWait>=5000){
-      clearInterval(waitAuth);
-      document.getElementById('loading-screen').classList.add('hidden');
-      startApp();
-    }
-  },200);
+  document.getElementById('loading-screen').classList.add('hidden');
+  startApp();
 }
 function startApp(){
   if(getPinUnlocked()){
