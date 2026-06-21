@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="it">
 <head>
 <meta charset="UTF-8">
@@ -198,19 +198,38 @@
 <div id="lock-screen" class="hidden">
   <div style="font-size:40px">🏠</div>
   <div class="lock-title">Our <span style="color:var(--accent)">Family</span> ❤️</div>
-  <div class="lock-sub" id="lock-sub-text">Inserisci il PIN per accedere</div>
-  <div id="pin-display"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
-  <div id="lock-error"></div>
-  <div class="pin-pad">
-    <button class="pin-btn" onclick="addPin(1)">1</button><button class="pin-btn" onclick="addPin(2)">2</button><button class="pin-btn" onclick="addPin(3)">3</button>
-    <button class="pin-btn" onclick="addPin(4)">4</button><button class="pin-btn" onclick="addPin(5)">5</button><button class="pin-btn" onclick="addPin(6)">6</button>
-    <button class="pin-btn" onclick="addPin(7)">7</button><button class="pin-btn" onclick="addPin(8)">8</button><button class="pin-btn" onclick="addPin(9)">9</button>
-    <button class="pin-btn" onclick="clearPin()" style="font-size:14px;color:var(--muted)">✕</button>
-    <button class="pin-btn" onclick="addPin(0)">0</button>
-    <button class="pin-btn" onclick="backPin()" style="font-size:14px">⌫</button>
+ 
+  <!-- STEP 1: scegli profilo -->
+  <div id="lock-step-profiles">
+    <div class="lock-sub" style="margin-bottom:16px">Chi sei?</div>
+    <div id="profile-buttons" style="display:flex;flex-direction:column;gap:10px;width:240px"></div>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-top:8px">PIN adulti: <span style="font-family:var(--font-mono);color:var(--accent)">1234</span></div>
-  <div style="font-size:12px;color:var(--muted)">PIN figlio: <span style="font-family:var(--font-mono);color:var(--purple)">0000</span></div>
+ 
+  <!-- STEP 2: inserisci PIN -->
+  <div id="lock-step-pin" style="display:none;flex-direction:column;align-items:center;gap:16px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button onclick="backToProfiles()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">‹</button>
+      <div class="lock-sub" id="lock-sub-text">Inserisci il PIN</div>
+    </div>
+    <div id="lock-selected-profile" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px"></div>
+    <div id="pin-display"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+    <div id="lock-error"></div>
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="addPin(1)">1</button><button class="pin-btn" onclick="addPin(2)">2</button><button class="pin-btn" onclick="addPin(3)">3</button>
+      <button class="pin-btn" onclick="addPin(4)">4</button><button class="pin-btn" onclick="addPin(5)">5</button><button class="pin-btn" onclick="addPin(6)">6</button>
+      <button class="pin-btn" onclick="addPin(7)">7</button><button class="pin-btn" onclick="addPin(8)">8</button><button class="pin-btn" onclick="addPin(9)">9</button>
+      <button class="pin-btn" onclick="clearPin()" style="font-size:14px;color:var(--muted)">✕</button>
+      <button class="pin-btn" onclick="addPin(0)">0</button>
+      <button class="pin-btn" onclick="backPin()" style="font-size:14px">⌫</button>
+    </div>
+  </div>
+ 
+  <!-- STEP 3: benvenuto -->
+  <div id="lock-step-welcome" style="display:none;flex-direction:column;align-items:center;gap:12px;text-align:center">
+    <div id="welcome-avatar" style="font-size:48px"></div>
+    <div id="welcome-name" style="font-family:var(--font-serif);font-size:26px"></div>
+    <div style="color:var(--muted);font-size:14px">Bentornato/a!</div>
+  </div>
 </div>
  
 <div id="child-banner">👦 Modalità Figlio — Vista limitata</div>
@@ -378,15 +397,14 @@
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Sicurezza</div>
-      <div class="setting-row">
-        <div><div class="setting-label">Cambia PIN adulti</div><div class="setting-sub">Il PIN è locale su ogni dispositivo</div></div>
-        <button class="btn btn-ghost btn-sm" onclick="openPinModal('adult')">Modifica</button>
-      </div>
-      <div class="setting-row">
-        <div><div class="setting-label">PIN figlio</div><div class="setting-sub">Accesso limitato: Liste, Agenda, Famiglia</div></div>
-        <button class="btn btn-ghost btn-sm" onclick="openPinModal('child')">Modifica</button>
-      </div>
+      <div class="card-title">👤 Profili utente</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Massimo 4 profili. Ogni profilo ha nome, emoji, PIN e ruolo. Il ruolo <strong>Figlio</strong> limita la vista automaticamente.</div>
+      <div id="profiles-list"></div>
+      <div id="add-profile-btn-wrap" style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="openProfileModal()">+ Aggiungi profilo</button></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔓 Accessi recenti</div>
+      <div id="accessi-list"><div style="color:var(--muted);font-size:13px">Caricamento...</div></div>
     </div>
     <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo sul dispositivo.</div>
   </div>
@@ -428,6 +446,28 @@
 </div>
 <div class="modal-overlay" id="birthday-modal">
   <div class="modal"><div class="modal-title">Compleanno / Ricorrenza</div><div class="form-row single"><label>Nome</label><input type="text" id="bd-name" placeholder="Es. Nonna Maria"></div><div class="form-row"><div><label>Data (GG/MM)</label><input type="text" id="bd-date" placeholder="15/03" maxlength="5"></div><div><label>Anno nascita (opzionale)</label><input type="number" id="bd-year" placeholder="1960" min="1900" max="2020"></div></div><div class="form-row single"><label>Tipo</label><select id="bd-tipo"><option value="🎂">🎂 Compleanno</option><option value="💍">💍 Anniversario</option><option value="🌹">🌹 Ricorrenza</option></select></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('birthday-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveBirthday()">Salva</button></div></div>
+</div>
+<div class="modal-overlay" id="profile-modal">
+  <div class="modal">
+    <div class="modal-title" id="profile-modal-title">Nuovo profilo</div>
+    <div class="form-row">
+      <div><label>Nome</label><input type="text" id="prof-name" placeholder="Es. Mattia" maxlength="20"></div>
+      <div><label>Emoji avatar</label><input type="text" id="prof-emoji" placeholder="👤" maxlength="2"></div>
+    </div>
+    <div class="form-row single"><label>Ruolo</label>
+      <select id="prof-ruolo">
+        <option value="adulto">👨‍💼 Adulto — accesso completo</option>
+        <option value="figlio">👦 Figlio — solo Liste, Agenda, Famiglia</option>
+      </select>
+    </div>
+    <div class="form-row single"><label>PIN (4-6 cifre)</label><input type="password" id="prof-pin" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+    <div class="form-row single"><label>Conferma PIN</label><input type="password" id="prof-pin2" placeholder="••••••" maxlength="6" inputmode="numeric"></div>
+    <div id="prof-error" style="color:var(--red);font-size:13px;min-height:18px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('profile-modal').classList.remove('open')">Annulla</button>
+      <button class="btn btn-primary" onclick="saveProfile()">Salva profilo</button>
+    </div>
+  </div>
 </div>
 <div class="modal-overlay" id="buoni-modal">
   <div class="modal"><div class="modal-title">Registra buoni spesa</div>
@@ -493,31 +533,109 @@ window.populateCatSelect=function(selId,tipo){
 let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[]};
 let isChildMode=false,pinTarget='adult',charts={};
  
-// ===== PIN =====
-function getPin(t='adult'){return localStorage.getItem(t==='adult'?'cn_pin':'cn_pin_child')||(t==='adult'?'1234':'0000');}
-function setPin(t,p){localStorage.setItem(t==='adult'?'cn_pin':'cn_pin_child',p);}
-function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
+// ===== PROFILI =====
+// Profili salvati in localStorage (PIN locali per sicurezza, non su Firebase)
+function getProfiles(){
+  const raw=localStorage.getItem('cn_profiles');
+  if(raw)try{return JSON.parse(raw);}catch(e){}
+  // Profili di default (compatibilità con versione precedente)
+  return[
+    {id:'adulto1',name:'Adulto 1',emoji:'👤',ruolo:'adulto',pin:'1234'},
+    {id:'figlio1',name:'Figlio',emoji:'👦',ruolo:'figlio',pin:'0000'}
+  ];
+}
+function saveProfiles(profiles){localStorage.setItem('cn_profiles',JSON.stringify(profiles));}
+ 
+let selectedProfileId=null;
 let pinBuffer='';
-window.addPin=function(d){if(pinBuffer.length>=4)return;pinBuffer+=String(d);updatePinDots();if(pinBuffer.length===4)checkPin();};
+ 
+function renderLockProfiles(){
+  const profiles=getProfiles();
+  const wrap=document.getElementById('profile-buttons');
+  wrap.innerHTML=profiles.map(p=>`
+    <button onclick="selectProfile('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;width:100%;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+      <span style="font-size:28px">${p.emoji||'👤'}</span>
+      <div><div style="font-size:15px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>
+    </button>`).join('');
+}
+ 
+window.selectProfile=function(id){
+  selectedProfileId=id;
+  const p=getProfiles().find(x=>x.id===id);
+  if(!p)return;
+  // Aggiorna PIN display dots in base alla lunghezza del PIN
+  const pinLen=p.pin.length;
+  document.getElementById('pin-display').innerHTML=Array(pinLen).fill('<div class="pin-dot"></div>').join('');
+  document.getElementById('lock-selected-profile').innerHTML=`<span style="font-size:24px">${p.emoji||'👤'}</span><div><div style="font-size:15px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:11px;color:var(--muted)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>`;
+  document.getElementById('lock-sub-text').textContent=`PIN di ${p.name}`;
+  pinBuffer='';updatePinDots();
+  document.getElementById('lock-step-profiles').style.display='none';
+  document.getElementById('lock-step-pin').style.display='flex';
+  document.getElementById('lock-error').textContent='';
+};
+ 
+window.backToProfiles=function(){
+  pinBuffer='';
+  document.getElementById('lock-step-pin').style.display='none';
+  document.getElementById('lock-step-profiles').style.display='block';
+  document.getElementById('lock-error').textContent='';
+};
+ 
+window.addPin=function(d){
+  const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
+  if(!p)return;
+  if(pinBuffer.length>=p.pin.length)return;
+  pinBuffer+=String(d);updatePinDots();
+  if(pinBuffer.length===p.pin.length)checkPin();
+};
 window.backPin=function(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('lock-error').textContent='';};
 window.clearPin=function(){pinBuffer='';updatePinDots();document.getElementById('lock-error').textContent='';};
 function updatePinDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
-function checkPin(){
-  if(pinBuffer===getPin('adult')){
-    isChildMode=false;sessionStorage.setItem('cn_unlocked','1');sessionStorage.setItem('cn_mode','adult');
+ 
+async function checkPin(){
+  const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
+  if(!p)return;
+  if(pinBuffer!==p.pin){
+    document.getElementById('lock-error').textContent='PIN errato, riprova';
+    pinBuffer='';updatePinDots();return;
+  }
+  // PIN corretto — salva sessione
+  isChildMode=p.ruolo==='figlio';
+  sessionStorage.setItem('cn_unlocked','1');
+  sessionStorage.setItem('cn_mode',p.ruolo);
+  sessionStorage.setItem('cn_profile_id',p.id);
+  sessionStorage.setItem('cn_profile_name',p.name);
+  sessionStorage.setItem('cn_profile_emoji',p.emoji||'👤');
+ 
+  // Registra accesso su Firestore
+  try{
+    await addDoc(collection(db,'accessi'),{
+      profilo:p.name,emoji:p.emoji||'👤',ruolo:p.ruolo,
+      data:serverTimestamp(),dispositivo:navigator.userAgent.slice(0,80)
+    });
+  }catch(e){}
+ 
+  // Mostra welcome screen
+  document.getElementById('lock-step-pin').style.display='none';
+  document.getElementById('lock-step-welcome').style.display='flex';
+  document.getElementById('welcome-avatar').textContent=p.emoji||'👤';
+  document.getElementById('welcome-name').textContent=p.name;
+  document.getElementById('child-banner').innerHTML=`${p.emoji||'👦'} Modalità ${p.name} — ${p.ruolo==='figlio'?'Vista limitata':'Accesso completo'}`;
+ 
+  setTimeout(()=>{
     document.getElementById('lock-screen').classList.add('hidden');
-    document.getElementById('child-banner').classList.remove('show');
-    document.getElementById('main-nav').style.display='';document.getElementById('child-nav').style.display='none';
-    document.getElementById('month-nav-wrap').style.display='';
-    listenTransactions();listenShared();
-  }else if(pinBuffer===getPin('child')){
-    isChildMode=true;sessionStorage.setItem('cn_unlocked','1');sessionStorage.setItem('cn_mode','child');
-    document.getElementById('lock-screen').classList.add('hidden');
-    document.getElementById('child-banner').classList.add('show');
-    document.getElementById('main-nav').style.display='none';document.getElementById('child-nav').style.display='';
-    document.getElementById('month-nav-wrap').style.display='none';
-    listenShared();showPage('liste',document.querySelector('#child-nav .tab'));
-  }else{document.getElementById('lock-error').textContent='PIN errato, riprova';pinBuffer='';updatePinDots();}
+    if(isChildMode){
+      document.getElementById('child-banner').classList.add('show');
+      document.getElementById('main-nav').style.display='none';document.getElementById('child-nav').style.display='';
+      document.getElementById('month-nav-wrap').style.display='none';
+      listenShared();showPage('liste',document.querySelector('#child-nav .tab'));
+    }else{
+      document.getElementById('child-banner').classList.remove('show');
+      document.getElementById('main-nav').style.display='';document.getElementById('child-nav').style.display='none';
+      document.getElementById('month-nav-wrap').style.display='';
+      listenTransactions();listenShared();
+    }
+  },1200);
 }
  
 // ===== MESE =====
@@ -630,18 +748,28 @@ function renderReminders(){
 }
  
 // ===== INIT =====
+function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
 function init(){
   loadTheme();updateMonthLabel();
   document.getElementById('loading-screen').classList.add('hidden');
-  if(!getPinUnlocked()){document.getElementById('lock-screen').classList.remove('hidden');}
-  else{
-    const mode=sessionStorage.getItem('cn_mode')||'adult';
-    if(mode==='child'){
-      isChildMode=true;document.getElementById('child-banner').classList.add('show');
+  if(getPinUnlocked()){
+    const mode=sessionStorage.getItem('cn_mode')||'adulto';
+    const name=sessionStorage.getItem('cn_profile_name')||'';
+    const emoji=sessionStorage.getItem('cn_profile_emoji')||'👤';
+    isChildMode=mode==='figlio';
+    document.getElementById('child-banner').innerHTML=`${emoji} ${name}${isChildMode?' — Vista limitata':''}`;
+    if(isChildMode){
+      document.getElementById('child-banner').classList.add('show');
       document.getElementById('main-nav').style.display='none';document.getElementById('child-nav').style.display='';
       document.getElementById('month-nav-wrap').style.display='none';
       listenShared();showPage('liste',document.querySelector('#child-nav .tab'));
-    }else{listenTransactions();listenShared();}
+    }else{
+      document.getElementById('main-nav').style.display='';document.getElementById('child-nav').style.display='none';
+      listenTransactions();listenShared();
+    }
+  }else{
+    renderLockProfiles();
+    document.getElementById('lock-screen').classList.remove('hidden');
   }
 }
  
@@ -1042,10 +1170,101 @@ function renderFamiglia(){
       <div class="family-member-card" style="margin-top:0"><div class="family-avatar" style="background:var(--purple)">👤</div><div style="flex:1"><div style="font-size:16px;font-weight:600">${names[1]||'Persona 2'}</div><div style="font-size:13px;color:var(--green)">Entrate: €${fmt(e2)}</div><div style="font-size:13px;color:var(--red)">Uscite: €${fmt(u2)}</div></div></div>
     </div>
     <div class="card"><div class="card-title">🔐 Accesso figlio</div>
-      <div style="font-size:14px;color:var(--muted);margin-bottom:12px">Il PIN figlio dà accesso solo a: <strong>Liste, Agenda, Famiglia</strong>.</div>
-      <button class="btn btn-ghost" onclick="openPinModal('child')">Cambia PIN figlio</button>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:12px">I profili con ruolo <strong>Figlio</strong> accedono solo a: Liste, Agenda, Famiglia. Gestisci i profili dalle Impostazioni.</div>
+      <button class="btn btn-ghost" onclick="showPage('impostazioni',document.querySelector('#main-nav .tab:last-child'))">⚙️ Vai alle Impostazioni</button>
     </div>
     <div class="tip"><div class="tip-header">👦 Modalità figlio</div>Condividi il PIN figlio con i bambini. Vedranno solo le liste, l'agenda e questa sezione — mai le finanze.</div>`;
+}
+ 
+// ===== GESTIONE PROFILI (impostazioni) =====
+let editingProfileId=null;
+window.openProfileModal=function(id=null){
+  editingProfileId=id;
+  const profiles=getProfiles();
+  if(id){
+    const p=profiles.find(x=>x.id===id);if(!p)return;
+    document.getElementById('prof-name').value=p.name;
+    document.getElementById('prof-emoji').value=p.emoji||'';
+    document.getElementById('prof-ruolo').value=p.ruolo;
+    document.getElementById('prof-pin').value='';
+    document.getElementById('prof-pin2').value='';
+    document.getElementById('profile-modal-title').textContent='Modifica profilo';
+  }else{
+    ['prof-name','prof-emoji','prof-pin','prof-pin2'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('prof-ruolo').value='adulto';
+    document.getElementById('profile-modal-title').textContent='Nuovo profilo';
+  }
+  document.getElementById('prof-error').textContent='';
+  document.getElementById('profile-modal').classList.add('open');
+};
+window.saveProfile=function(){
+  const name=document.getElementById('prof-name').value.trim();
+  const emoji=document.getElementById('prof-emoji').value.trim()||'👤';
+  const ruolo=document.getElementById('prof-ruolo').value;
+  const pin=document.getElementById('prof-pin').value;
+  const pin2=document.getElementById('prof-pin2').value;
+  const err=document.getElementById('prof-error');
+  if(!name){err.textContent='Inserisci un nome';return;}
+  if(pin&&(pin.length<4||!/^\d+$/.test(pin))){err.textContent='Il PIN deve essere di 4-6 cifre numeriche';return;}
+  if(pin&&pin!==pin2){err.textContent='I PIN non corrispondono';return;}
+  const profiles=getProfiles();
+  if(editingProfileId){
+    const idx=profiles.findIndex(x=>x.id===editingProfileId);if(idx<0)return;
+    profiles[idx]={...profiles[idx],name,emoji,ruolo};
+    if(pin)profiles[idx].pin=pin;
+  }else{
+    if(profiles.length>=4){err.textContent='Massimo 4 profili';return;}
+    if(!pin){err.textContent='Inserisci un PIN per il nuovo profilo';return;}
+    profiles.push({id:uid(),name,emoji,ruolo,pin});
+  }
+  saveProfiles(profiles);
+  document.getElementById('profile-modal').classList.remove('open');
+  renderSettingsProfiles();
+  toast('Profilo salvato ✓');
+};
+window.deleteProfile=function(id){
+  if(!confirm('Eliminare questo profilo?'))return;
+  const profiles=getProfiles().filter(p=>p.id!==id);
+  if(profiles.length===0){toast('Deve esserci almeno un profilo','err');return;}
+  saveProfiles(profiles);renderSettingsProfiles();toast('Profilo eliminato');
+};
+function renderSettingsProfiles(){
+  const profiles=getProfiles();
+  const el=document.getElementById('profiles-list');
+  el.innerHTML=profiles.map(p=>`
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:24px">${p.emoji||'👤'}</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:500">${p.name}</div>
+        <div style="font-size:12px;color:var(--muted)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'} · PIN: ${'•'.repeat(p.pin.length)}</div>
+      </div>
+      <button class="btn-edit" onclick="openProfileModal('${p.id}')">✏️</button>
+      <button class="btn-danger" onclick="deleteProfile('${p.id}')">✕</button>
+    </div>`).join('');
+  const addBtn=document.getElementById('add-profile-btn-wrap');
+  if(addBtn)addBtn.style.display=profiles.length>=4?'none':'block';
+}
+ 
+// ===== ACCESSI LOG =====
+async function renderAccessiLog(){
+  const el=document.getElementById('accessi-list');if(!el)return;
+  try{
+    const{getDocs,query,orderBy,limit}=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js');
+    const q=query(collection(db,'accessi'),orderBy('data','desc'),limit(20));
+    const snap=await getDocs(q);
+    if(snap.empty){el.innerHTML='<div style="color:var(--muted);font-size:13px">Nessun accesso registrato</div>';return;}
+    el.innerHTML=snap.docs.map(d=>{
+      const a=d.data();
+      const dt=a.data?.toDate?a.data.toDate():new Date();
+      const dateStr=dt.toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit',year:'numeric'});
+      const timeStr=dt.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+      return`<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:20px">${a.emoji||'👤'}</span>
+        <div style="flex:1"><div style="font-size:14px;font-weight:500">${a.profilo||'—'}</div><div style="font-size:11px;color:var(--muted)">${a.ruolo==='figlio'?'👦 Figlio':'👨‍💼 Adulto'}</div></div>
+        <div style="text-align:right;font-size:12px;color:var(--muted);font-family:var(--font-mono)">${dateStr}<br>${timeStr}</div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Impossibile caricare gli accessi</div>';}
 }
  
 // ===== IMPOSTAZIONI =====
@@ -1053,26 +1272,13 @@ function renderSettings(){
   const n=state.settings.names||['',''];const n1=document.getElementById('name1'),n2=document.getElementById('name2');
   if(document.activeElement!==n1)n1.value=n[0]||'';if(document.activeElement!==n2)n2.value=n[1]||'';
   const cl=document.getElementById('carta-limite');if(document.activeElement!==cl)cl.value=state.settings.cartaLimite||'';
+  renderSettingsProfiles();
+  renderAccessiLog();
 }
+ 
 let namesTimer,cartaTimer;
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});},800);};
 window.saveCartaLimite=function(){clearTimeout(cartaTimer);cartaTimer=setTimeout(async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');},800);};
-window.openPinModal=function(type='adult'){
-  pinTarget=type;['pin-old','pin-new','pin-confirm'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('pin-modal-error').textContent='';
-  document.getElementById('pin-modal-title').textContent=type==='child'?'Cambia PIN Figlio':'Cambia PIN Adulti';
-  document.getElementById('pin-modal').classList.add('open');
-};
-window.savePin=function(){
-  const old=document.getElementById('pin-old').value,newp=document.getElementById('pin-new').value,conf=document.getElementById('pin-confirm').value;
-  const err=document.getElementById('pin-modal-error');
-  if(old!==getPin(pinTarget)){err.textContent='PIN attuale errato';return;}
-  if(newp.length!==4||!/^\d+$/.test(newp)){err.textContent='Il PIN deve essere di 4 cifre';return;}
-  if(newp!==conf){err.textContent='I PIN non corrispondono';return;}
-  setPin(pinTarget,newp);document.getElementById('pin-modal').classList.remove('open');toast('PIN aggiornato ✓');
-};
- 
-// ===== UTILS =====
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function fmt(n){return Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
