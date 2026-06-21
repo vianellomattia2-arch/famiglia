@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0f1117">
-<title>Casa Nostra — Finanze di Famiglia</title>
+<title>Our Family ❤️ — Finanze di Famiglia</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -197,7 +197,7 @@
  
 <div id="lock-screen" class="hidden">
   <div style="font-size:40px">🏠</div>
-  <div class="lock-title">Casa <span style="color:var(--accent)">Nostra</span></div>
+  <div class="lock-title">Our <span style="color:var(--accent)">Family</span> ❤️</div>
   <div class="lock-sub" id="lock-sub-text">Inserisci il PIN per accedere</div>
   <div id="pin-display"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
   <div id="lock-error"></div>
@@ -216,7 +216,7 @@
 <div id="child-banner">👦 Modalità Figlio — Vista limitata</div>
  
 <header>
-  <div class="logo">Casa <span>Nostra</span></div>
+  <div class="logo">Our <span>Family</span> ❤️</div>
   <div class="header-right">
     <div id="sync-status"><div id="sync-dot"></div><span id="sync-label">...</span></div>
     <div class="month-nav" id="month-nav-wrap">
@@ -235,6 +235,7 @@
   <button class="tab" onclick="showPage('risparmi',this)">🎯 Risparmi</button>
   <button class="tab" onclick="showPage('liste',this)">✅ Liste</button>
   <button class="tab" onclick="showPage('ricorrenti',this)">🔁 Ricorrenti</button>
+  <button class="tab" onclick="showPage('buoni',this)">🎟️ Buoni</button>
   <button class="tab" onclick="showPage('grafici',this)">📈 Grafici</button>
   <button class="tab" onclick="showPage('saldi',this)">🏦 Saldi</button>
   <button class="tab" onclick="showPage('report',this)">📄 Report</button>
@@ -253,9 +254,10 @@
     <div class="summary-grid" id="summary-grid"></div>
     <div id="carta-summary-wrap"></div>
     <div class="card" id="reminders-card" style="display:none"><div class="card-title">⏰ Promemoria scadenze</div><div id="reminders-list"></div></div>
+    <div class="card" id="ricorrenti-dash-card"><div class="card-title">🔁 Spese ricorrenti mensili</div><div id="ricorrenti-dash"></div></div>
     <div class="card"><div class="card-title">Spese per categoria</div><div id="cat-breakdown"></div></div>
     <div class="card"><div class="card-title">Ultime transazioni</div><ul class="tx-list" id="recent-tx"></ul></div>
-    <div class="tip"><div class="tip-header">💡 Consiglio del mese</div><div id="tip-text"></div></div>
+    <div class="tip"><div class="tip-header">💡 Consiglio del giorno</div><div id="tip-text"></div></div>
   </div>
  
   <!-- TRANSAZIONI -->
@@ -268,6 +270,12 @@
         <button class="tab" onclick="filterTx('entrata',this)" style="flex:1;border-radius:0;">Entrate</button>
         <button class="tab" onclick="filterTx('conto',this)" style="flex:1;border-radius:0;">Conto</button>
         <button class="tab" onclick="filterTx('carta',this)" style="flex:1;border-radius:0;">Carta</button>
+      </div>
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="filter-cat" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1;min-width:130px"><option value="">Tutte le categorie</option></select>
+        <input type="date" id="filter-date-from" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1" placeholder="Dal">
+        <input type="date" id="filter-date-to" onchange="renderTxList()" style="font-size:12px;padding:5px 8px;width:auto;flex:1" placeholder="Al">
+        <button class="btn btn-ghost btn-sm" onclick="clearTxFilters()" style="font-size:12px">✕ Reset</button>
       </div>
       <div style="padding:0 16px;"><ul class="tx-list" id="all-tx"></ul></div>
     </div>
@@ -305,7 +313,15 @@
   <div class="page" id="page-ricorrenti">
     <div class="section-header"><div class="section-title">Spese ricorrenti</div><button class="btn btn-primary btn-sm" onclick="openTxModal(null,true)">+ Aggiungi</button></div>
     <div id="ricorrenti-list"></div>
-    <div class="tip"><div class="tip-header">🔁 Come funziona</div>Vengono inserite automaticamente ogni mese appena apri l'app nel giorno giusto.</div>
+    <div class="tip"><div class="tip-header">🔁 Come funziona</div>Vengono inserite automaticamente ogni mese appena apri l'app nel giorno giusto. Puoi impostare una data di fine per fermarle.</div>
+  </div>
+ 
+  <!-- BUONI SPESA -->
+  <div class="page" id="page-buoni">
+    <div class="section-header"><div class="section-title">🎟️ Buoni spesa</div><button class="btn btn-primary btn-sm" onclick="openBuoniModal()">+ Registra</button></div>
+    <div id="buoni-summary"></div>
+    <div class="card"><div class="card-title">Utilizzi questo mese</div><div id="buoni-list"></div></div>
+    <div class="tip"><div class="tip-header">🎟️ Come funziona</div>I buoni valgono <strong>€7 cadauno</strong>. Registra quanti ne ricevi e come li usi (spesa supermercato o pasti lavoro). Il totale conta come entrata mensile.</div>
   </div>
  
   <!-- GRAFICI -->
@@ -388,7 +404,8 @@
     <div class="form-row"><div><label>Pagato con</label><select id="tx-metodo"><option value="conto">💳 Conto corrente</option><option value="carta">💜 Carta di credito</option></select></div><div><label>Chi paga</label><select id="tx-chi"></select></div></div>
     <div class="form-row single"><label>Note</label><input type="text" id="tx-note" placeholder="..."></div>
     <div class="checkbox-row"><input type="checkbox" id="tx-ricorrente" onchange="toggleRicorrenteFields()"><label for="tx-ricorrente">🔁 Spesa ricorrente</label></div>
-    <div id="ricorrente-fields" style="display:none"><div class="form-row"><div><label>Frequenza</label><select id="tx-frequenza"><option value="settimanale">Ogni settimana</option><option value="mensile" selected>Ogni mese</option><option value="trimestrale">Ogni 3 mesi</option><option value="semestrale">Ogni 6 mesi</option><option value="annuale">Ogni anno</option></select></div><div><label>A partire da</label><input type="date" id="tx-ricorrente-inizio"></div></div></div>
+    <div id="ricorrente-fields" style="display:none"><div class="form-row"><div><label>Frequenza</label><select id="tx-frequenza"><option value="settimanale">Ogni settimana</option><option value="mensile" selected>Ogni mese</option><option value="bimestrale">Ogni 2 mesi</option><option value="trimestrale">Ogni 3 mesi</option><option value="semestrale">Ogni 6 mesi</option><option value="annuale">Ogni anno</option></select></div><div><label>A partire da</label><input type="date" id="tx-ricorrente-inizio"></div></div>
+    <div class="form-row single"><label>Data fine (opzionale)</label><input type="date" id="tx-ricorrente-fine" placeholder="Lascia vuoto = senza scadenza"></div></div>
     <div class="modal-footer"><button class="btn btn-ghost" onclick="closeTxModal()">Annulla</button><button class="btn btn-primary" onclick="saveTx()">Salva</button></div>
   </div>
 </div>
@@ -411,6 +428,13 @@
 </div>
 <div class="modal-overlay" id="birthday-modal">
   <div class="modal"><div class="modal-title">Compleanno / Ricorrenza</div><div class="form-row single"><label>Nome</label><input type="text" id="bd-name" placeholder="Es. Nonna Maria"></div><div class="form-row"><div><label>Data (GG/MM)</label><input type="text" id="bd-date" placeholder="15/03" maxlength="5"></div><div><label>Anno nascita (opzionale)</label><input type="number" id="bd-year" placeholder="1960" min="1900" max="2020"></div></div><div class="form-row single"><label>Tipo</label><select id="bd-tipo"><option value="🎂">🎂 Compleanno</option><option value="💍">💍 Anniversario</option><option value="🌹">🌹 Ricorrenza</option></select></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('birthday-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveBirthday()">Salva</button></div></div>
+</div>
+<div class="modal-overlay" id="buoni-modal">
+  <div class="modal"><div class="modal-title">Registra buoni spesa</div>
+  <div class="form-row single"><label>Numero di buoni ricevuti questo mese</label><input type="number" id="buoni-qty" placeholder="Es. 20" min="1"></div>
+  <div class="form-row single"><label>Utilizzo</label><select id="buoni-uso"><option value="spesa">🛒 Spesa supermercato</option><option value="pasti">🍱 Copertura pasti lavoro</option><option value="misto">🔀 Misto (spesa + pasti)</option></select></div>
+  <div class="form-row single"><label>Note</label><input type="text" id="buoni-note" placeholder="Es. Buoni giugno, usati 15 al super..."></div>
+  <div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('buoni-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveBuoni()">Salva</button></div></div>
 </div>
 <div class="modal-overlay" id="saldo-modal">
   <div class="modal"><div class="modal-title">Nuovo conto</div><div class="form-row single"><label>Nome conto</label><input type="text" id="saldo-name" placeholder="Es. Conto corrente, Deposito..."></div><div class="form-row single"><label>Saldo attuale (€)</label><input type="number" id="saldo-amount" placeholder="0.00" step="0.01"></div><div class="form-row single"><label>Emoji</label><input type="text" id="saldo-emoji" placeholder="🏦" maxlength="2"></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('saldo-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveSaldo()">Salva</button></div></div>
@@ -440,17 +464,20 @@ function loadTheme(){document.body.setAttribute('data-theme',localStorage.getIte
 const CATEGORIES={
   uscita:[
     {id:'mutuo',label:'Mutuo / Affitto',icon:'🏠',color:'#6c9fff',group:'Casa'},{id:'condominio',label:'Condominio',icon:'🏢',color:'#5a8fff',group:'Casa'},{id:'manutenzione',label:'Manutenzione casa',icon:'🔧',color:'#4a7fff',group:'Casa'},
-    {id:'luce',label:'Luce',icon:'💡',color:'#f5c842',group:'Bollette'},{id:'gas',label:'Gas',icon:'🔥',color:'#ff8c42',group:'Bollette'},{id:'acqua',label:'Acqua',icon:'💧',color:'#42c4ff',group:'Bollette'},{id:'internet',label:'Internet',icon:'📡',color:'#6bf5c8',group:'Bollette'},{id:'telefono',label:'Telefono fisso',icon:'☎️',color:'#8cf5a0',group:'Bollette'},
+    {id:'luce',label:'Luce',icon:'💡',color:'#f5c842',group:'Bollette'},{id:'gas',label:'Gas',icon:'🔥',color:'#ff8c42',group:'Bollette'},{id:'acqua',label:'Acqua',icon:'💧',color:'#42c4ff',group:'Bollette'},{id:'internet',label:'Internet casa',icon:'🌐',color:'#6bf5c8',group:'Bollette'},{id:'telefono',label:'Telefono fisso',icon:'☎️',color:'#8cf5a0',group:'Bollette'},{id:'cellulare',label:'Abbonamento cellulare',icon:'📱',color:'#b48fff',group:'Bollette'},
     {id:'streaming',label:'Streaming video',icon:'📺',color:'#ff6bbf',group:'Abbonamenti'},{id:'musica',label:'Musica',icon:'🎵',color:'#b48fff',group:'Abbonamenti'},{id:'sport_abb',label:'Palestra / Sport',icon:'🏋️',color:'#ff9f6b',group:'Abbonamenti'},{id:'software',label:'Software / App',icon:'💻',color:'#6c9fff',group:'Abbonamenti'},{id:'giornali',label:'Giornali / Riviste',icon:'📰',color:'#aaa',group:'Abbonamenti'},
     {id:'spesa',label:'Spesa alimentare',icon:'🛒',color:'#4fd89e',group:'Cibo'},{id:'ristorante',label:'Ristorante / Cena',icon:'🍽️',color:'#ffb347',group:'Cibo'},{id:'bar_caffe',label:'Bar / Caffè',icon:'☕',color:'#c8a070',group:'Cibo'},{id:'delivery',label:'Delivery / Takeaway',icon:'🛵',color:'#ff6b7a',group:'Cibo'},
     {id:'carburante',label:'Carburante',icon:'⛽',color:'#f5c842',group:'Trasporti'},{id:'assicurazione',label:'Assicurazione auto',icon:'🚗',color:'#ffb347',group:'Trasporti'},{id:'bollo',label:'Bollo / Tasse auto',icon:'📋',color:'#aaa',group:'Trasporti'},{id:'trasporto_pub',label:'Mezzi pubblici',icon:'🚌',color:'#6bf5c8',group:'Trasporti'},{id:'taxi',label:'Taxi / Ridesharing',icon:'🚕',color:'#f5c842',group:'Trasporti'},
+    {id:'fin_auto',label:'Finanziamento Auto',icon:'🚙',color:'#6c9fff',group:'Finanziamenti'},{id:'fin_mobili',label:'Finanziamento Mobili',icon:'🛋️',color:'#c8a070',group:'Finanziamenti'},{id:'fin_altro',label:'Finanziamento Altro',icon:'📑',color:'#aaa',group:'Finanziamenti'},
     {id:'medico',label:'Visite mediche',icon:'🏥',color:'#ff6b7a',group:'Salute'},{id:'farmacia',label:'Farmacia',icon:'💊',color:'#ff9f6b',group:'Salute'},{id:'dentista',label:'Dentista',icon:'🦷',color:'#fff',group:'Salute'},
     {id:'svago',label:'Uscite / Svago',icon:'🎭',color:'#b48fff',group:'Svago'},{id:'vacanze',label:'Vacanze / Viaggi',icon:'✈️',color:'#6c9fff',group:'Svago'},{id:'sport_prat',label:'Sport praticato',icon:'⚽',color:'#4fd89e',group:'Svago'},{id:'libri',label:'Libri / Cultura',icon:'📚',color:'#b48fff',group:'Svago'},
     {id:'abbigliamento',label:'Abbigliamento',icon:'👗',color:'#ff9f6b',group:'Shopping'},{id:'elettronica',label:'Elettronica',icon:'📱',color:'#6c9fff',group:'Shopping'},{id:'casa_arredi',label:'Casa / Arredi',icon:'🛋️',color:'#c8a070',group:'Shopping'},
     {id:'istruzione',label:'Istruzione / Corsi',icon:'🎓',color:'#f5c842',group:'Altro'},{id:'animali',label:'Animali domestici',icon:'🐾',color:'#ffb347',group:'Altro'},{id:'regalo',label:'Regalo',icon:'🎁',color:'#b48fff',group:'Altro'},{id:'altro',label:'Altro',icon:'📦',color:'#7a7f94',group:'Altro'}
   ],
   entrata:[
-    {id:'stipendio',label:'Stipendio',icon:'💼',color:'#4fd89e',group:'Lavoro'},{id:'freelance',label:'Freelance / Extra',icon:'💻',color:'#6c9fff',group:'Lavoro'},{id:'bonus',label:'Bonus / Premio',icon:'🏆',color:'#f5c842',group:'Lavoro'},
+    {id:'stipendio',label:'Stipendio',icon:'💼',color:'#4fd89e',group:'Lavoro'},{id:'freelance',label:'Freelance / Extra',icon:'💻',color:'#6c9fff',group:'Lavoro'},{id:'bonus',label:'Bonus / Premio',icon:'🏆',color:'#f5c842',group:'Lavoro'},{id:'mance_ila',label:'Mance Ila',icon:'💐',color:'#ff9f6b',group:'Lavoro'},
+    {id:'copertura_laura',label:'Copertura Laura',icon:'🌟',color:'#b48fff',group:'Lavoro'},
+    {id:'buoni_pasto',label:'Buoni pasto',icon:'🎟️',color:'#4fd89e',group:'Benefit'},
     {id:'rimborso',label:'Rimborso spese',icon:'↩️',color:'#6bf5c8',group:'Varie'},{id:'regalo_e',label:'Regalo ricevuto',icon:'🎁',color:'#b48fff',group:'Varie'},{id:'vendita',label:'Vendita oggetti',icon:'🏷️',color:'#ff9f6b',group:'Varie'},{id:'investimenti',label:'Investimenti',icon:'📈',color:'#4fd89e',group:'Varie'},{id:'altro_e',label:'Altro',icon:'📦',color:'#7a7f94',group:'Varie'}
   ]
 };
@@ -463,7 +490,7 @@ window.populateCatSelect=function(selId,tipo){
 };
  
 // ===== STATE =====
-let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[]};
+let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[]};
 let isChildMode=false,pinTarget='adult',charts={};
  
 // ===== PIN =====
@@ -516,6 +543,7 @@ function listenShared(){
   onSnapshot(doc(db,'shared','ricorrenti'),snap=>{state.ricorrenti=snap.exists()?(snap.data().list||[]):[];renderPage('ricorrenti');checkRicorrenti();});
   onSnapshot(doc(db,'shared','saldi'),snap=>{state.saldi=snap.exists()?(snap.data().list||[]):[];renderPage('saldi');});
   onSnapshot(doc(db,'shared','birthdays'),snap=>{state.birthdays=snap.exists()?(snap.data().list||[]):[];renderPage('agenda');renderReminders();});
+  onSnapshot(doc(db,'shared','buoni'),snap=>{state.buoni=snap.exists()?(snap.data().list||[]):[];renderPage('buoni');});
   onSnapshot(doc(db,'shared','settings'),snap=>{
     if(snap.exists()){
       state.settings={...state.settings,...snap.data()};
@@ -564,11 +592,14 @@ function checkRicorrenti(){
   });
 }
 function shouldInsert(r,td){
-  const ini=new Date(r.inizio+'T12:00:00'),ogg=new Date(td+'T12:00:00');if(ogg<ini)return false;
+  const ini=new Date(r.inizio+'T12:00:00'),ogg=new Date(td+'T12:00:00');
+  if(ogg<ini)return false;
+  if(r.fine&&ogg>new Date(r.fine+'T12:00:00'))return false;
   if(r.frequenza==='mensile')return ini.getDate()===ogg.getDate();
+  if(r.frequenza==='bimestrale'){const mDiff=(ogg.getFullYear()-ini.getFullYear())*12+(ogg.getMonth()-ini.getMonth());return ini.getDate()===ogg.getDate()&&mDiff%2===0;}
   if(r.frequenza==='settimanale'){const d=Math.round((ogg-ini)/864e5);return d%7===0;}
-  if(r.frequenza==='trimestrale')return ini.getDate()===ogg.getDate()&&(ogg.getMonth()-ini.getMonth())%3===0;
-  if(r.frequenza==='semestrale')return ini.getDate()===ogg.getDate()&&(ogg.getMonth()-ini.getMonth())%6===0;
+  if(r.frequenza==='trimestrale'){const mDiff=(ogg.getFullYear()-ini.getFullYear())*12+(ogg.getMonth()-ini.getMonth());return ini.getDate()===ogg.getDate()&&mDiff%3===0;}
+  if(r.frequenza==='semestrale'){const mDiff=(ogg.getFullYear()-ini.getFullYear())*12+(ogg.getMonth()-ini.getMonth());return ini.getDate()===ogg.getDate()&&mDiff%6===0;}
   if(r.frequenza==='annuale')return ini.getDate()===ogg.getDate()&&ini.getMonth()===ogg.getMonth();
   return false;
 }
@@ -634,6 +665,7 @@ function renderPage(name){
   if(name==='saldi')renderSaldi();
   if(name==='report')renderReport();
   if(name==='famiglia')renderFamiglia();
+  if(name==='buoni')renderBuoni();
   if(name==='impostazioni'){renderSettings();renderThemePicker();}
 }
 function renderAll(){const a=document.querySelector('.page.active')?.id?.replace('page-','');if(a)renderPage(a);}
@@ -641,23 +673,29 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 // ===== DASHBOARD =====
 function renderDashboard(){
   const txs=state.transactions,td=today();
-  const entrate=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uscite=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const eOra=txs.filter(t=>t.tipo==='entrata'&&t.data<=td).reduce((a,t)=>a+t.importo,0);
-  const uOra=txs.filter(t=>t.tipo==='uscita'&&t.data<=td).reduce((a,t)=>a+t.importo,0);
-  const sOra=eOra-uOra,sFine=entrate-uscite;
+  const mkStart=monthKey()+'-01';const mkEnd=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-31`;
+  // Only count transactions whose date is <= today AND within this month
+  const txThisMonth=txs.filter(t=>t.data>=mkStart&&t.data<=td);
+  const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const uscite=txThisMonth.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  // For "a fine mese" include all scheduled this month
+  const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const sOra=entrate-uscite,sFine=eAll-uAll;
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
-  const usatoCarta=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='carta'&&t.data<=td).reduce((a,t)=>a+t.importo,0);
-  const tips=["Registrare ogni spesa è il primo passo verso il controllo finanziario.","Revisionate insieme le spese fisse ogni mese — abbonamenti dimenticati si trovano in fretta.","Mettete da parte il 20% delle entrate subito, non ciò che avanza.","Confrontate bollette e assicurazioni ogni anno — il mercato cambia.","Fondo emergenza prima degli obiettivi di piacere: 3-6 mesi di spese fisse.","Le piccole spese quotidiane si sommano: un caffè al giorno fa ~500€ l'anno."];
-  document.getElementById('tip-text').textContent=tips[new Date().getMonth()%tips.length];
+  const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
+  const tips=["Registrare ogni spesa è il primo passo verso il controllo finanziario.","Revisionate insieme le spese fisse ogni mese — abbonamenti dimenticati si trovano in fretta.","Mettete da parte il 20% delle entrate subito, non ciò che avanza.","Confrontate bollette e assicurazioni ogni anno — il mercato cambia.","Fondo emergenza prima degli obiettivi di piacere: 3-6 mesi di spese fisse.","Le piccole spese quotidiane si sommano: un caffè al giorno fa ~500€ l'anno.","Automatizzate i risparmi con un bonifico programmato il giorno dello stipendio.","Controllate il saldo della carta di credito ogni settimana, non solo a fine mese.","Negoziate il rinnovo di abbonamenti e polizze: spesso si ottengono sconti facilmente.","Prima di acquistare qualcosa di costoso, aspettate 48 ore: spesso il desiderio passa.","Tenete sempre un piccolo fondo extra per le spese impreviste — non spendete tutto.","Un budget scritto è tre volte più efficace di uno mentale.","Le spese ricorrenti piccole sono le più pericolose: 10€/mese × 10 abbonamenti = 1200€/anno.","Fare la spesa con una lista riduce gli acquisti impulsivi del 30%.","Paragonare i prezzi su più supermercati per i prodotti che acquistate spesso vale lo sforzo.","Rivedere il piano tariffario del cellulare ogni anno può far risparmiare decine di euro.","Cucinare a casa invece di ordinare delivery risparmia in media 8-12€ a pasto.","La regola delle 24 ore: aspettate un giorno prima di qualunque acquisto online non essenziale.","Investire anche solo 50€/mese in un fondo indice fa la differenza in 10 anni.","Pagate prima i debiti ad alto interesse: risparmiare il 20% non vale nulla se pagate il 18% su un debito.","Usate il cashback delle carte per recuperare piccole percentuali su ogni acquisto.","Programmate una 'revisione finanziaria mensile' di 30 minuti insieme — fa la differenza.","I buoni pasto sono reddito esentasse: usateli sempre, non lasciateli scadere.","Ogni acquisto ha un costo reale = prezzo + ore di lavoro necessarie per guadagnarlo.","Confrontate la vostra spesa alimentare mensile con la media nazionale per capire dove agire.","Un bilancio familiare condiviso evita malintesi e costruisce fiducia reciproca.","Le spese di salute non si rimandano: prevenire costa sempre meno che curare.","Rinegoziare il mutuo quando i tassi scendono può liberare centinaia di euro al mese.","Vendere ciò che non usate più genera liquidità e ordine allo stesso tempo.","Fissare un obiettivo comune (vacanza, casa, auto) rende più facile rinunciare alle spese impulsive."];
+  const dayOfYear=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5);
+  document.getElementById('tip-text').textContent=tips[dayOfYear%tips.length];
   document.getElementById('summary-grid').innerHTML=`
-    <div class="summary-card"><div class="label">Disponibile ora</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">al netto delle uscite di oggi</div></div>
-    <div class="summary-card"><div class="label">A fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
-    <div class="summary-card"><div class="label">Entrate mese</div><div class="amount green">€${fmt(entrate)}</div></div>
-    <div class="summary-card"><div class="label">Uscite mese</div><div class="amount red">€${fmt(uscite)}</div></div>`;
+    <div class="summary-card"><div class="label">Saldo ad oggi</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">entrate − uscite fino a oggi</div></div>
+    <div class="summary-card"><div class="label">Saldo a fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
+    <div class="summary-card"><div class="label">Entrate ad oggi</div><div class="amount green">€${fmt(entrate)}</div><div class="sub">incassate fino a oggi</div></div>
+    <div class="summary-card"><div class="label">Uscite ad oggi</div><div class="amount red">€${fmt(uscite)}</div><div class="sub">pagate fino a oggi</div></div>`;
   const cw=document.getElementById('carta-summary-wrap');
   if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid"><div class="carta-card"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div><div class="sub">su €${fmt(limCarta)} limite</div></div><div class="carta-card"><div class="label">💜 Disponibile carta</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div><div class="sub">${Math.round(p)}% utilizzato</div></div></div><div class="card" style="margin-top:-6px;padding:12px 18px;margin-bottom:16px;"><div class="progress-bar"><div class="progress-fill" style="width:${p}%;background:${bc}"></div></div><div class="progress-label"><span>Carta</span><span>€${fmt(usatoCarta)} / €${fmt(limCarta)}</span></div></div>`;}else cw.innerHTML='';
   renderReminders();
+  renderRicorrentiDash();
   const bycat={};txs.filter(t=>t.tipo==='uscita').forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;
   const bd=document.getElementById('cat-breakdown');
@@ -675,13 +713,31 @@ function txHtml(t,showActions=false){
   const aB=t.ricorrenteId?'<span class="badge badge-auto">🔁</span>':'';
   return`<li class="tx-item"><div class="tx-left"><div class="tx-icon">${cat.icon}</div><div><div class="tx-desc">${t.desc}${cB}${aB}</div><div class="tx-meta">${formatDate(t.data)} · ${cat.label}</div></div></div><div class="tx-right"><span class="tx-amount" style="color:${color}">${sign}€${fmt(t.importo)}</span>${showActions?`<button class="btn-edit" onclick="openTxModal('${t.id}')">✏️</button><button class="btn-danger" onclick="deleteTx('${t.id}')">✕</button>`:''}</div></li>`;
 }
+function populateCatFilter(){
+  const sel=document.getElementById('filter-cat');if(!sel)return;
+  const cur=sel.value;
+  const allCats=[...CATEGORIES.uscita,...CATEGORIES.entrata];
+  sel.innerHTML='<option value="">Tutte le categorie</option>'+allCats.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('');
+  sel.value=cur;
+}
 function renderTxList(){
+  populateCatFilter();
   const txs=state.transactions;
+  const catFilter=document.getElementById('filter-cat')?.value||'';
+  const dateFrom=document.getElementById('filter-date-from')?.value||'';
+  const dateTo=document.getElementById('filter-date-to')?.value||'';
   let f=currentFilter==='tutte'?txs:currentFilter==='conto'?txs.filter(t=>t.metodo!=='carta'):currentFilter==='carta'?txs.filter(t=>t.metodo==='carta'):txs.filter(t=>t.tipo===currentFilter);
+  if(catFilter)f=f.filter(t=>t.categoria===catFilter);
+  if(dateFrom)f=f.filter(t=>t.data>=dateFrom);
+  if(dateTo)f=f.filter(t=>t.data<=dateTo);
   const sorted=[...f].sort((a,b)=>new Date(b.data)-new Date(a.data));
   const ul=document.getElementById('all-tx');
-  ul.innerHTML=sorted.length?sorted.map(t=>txHtml(t,true)).join(''):'<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione. Aggiungine una!</div>';
+  ul.innerHTML=sorted.length?sorted.map(t=>txHtml(t,true)).join(''):'<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione per i filtri selezionati.</div>';
 }
+window.clearTxFilters=function(){
+  const fc=document.getElementById('filter-cat'),fd=document.getElementById('filter-date-from'),ft=document.getElementById('filter-date-to');
+  if(fc)fc.value='';if(fd)fd.value='';if(ft)ft.value='';renderTxList();
+};
 window.filterTx=function(type,btn){currentFilter=type;document.querySelectorAll('#page-entrate .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderTxList();};
 window.deleteTx=async function(id){if(!confirm('Eliminare?'))return;await deleteTxFS(id);toast('Transazione eliminata');};
 let editingTxId=null;
@@ -698,7 +754,7 @@ window.toggleRicorrenteFields=function(){document.getElementById('ricorrente-fie
 window.saveTx=async function(){
   const tipo=document.getElementById('tx-tipo').value,importo=parseFloat(document.getElementById('tx-importo').value),desc=document.getElementById('tx-desc').value.trim(),cat=document.getElementById('tx-cat').value,data=document.getElementById('tx-data').value,note=document.getElementById('tx-note').value.trim(),chi=document.getElementById('tx-chi').value,metodo=document.getElementById('tx-metodo').value,isRic=document.getElementById('tx-ricorrente').checked;
   if(!importo||!desc||!data){toast('Compila tutti i campi','err');return;}
-  if(isRic&&!editingTxId){const freq=document.getElementById('tx-frequenza').value,inizio=document.getElementById('tx-ricorrente-inizio').value||data;await saveShared('ricorrenti',{list:[...state.ricorrenti,{id:uid(),tipo,importo,desc,categoria:cat,metodo,chi,frequenza:freq,inizio,note}]});}
+  if(isRic&&!editingTxId){const freq=document.getElementById('tx-frequenza').value,inizio=document.getElementById('tx-ricorrente-inizio').value||data,fine=document.getElementById('tx-ricorrente-fine').value||null;await saveShared('ricorrenti',{list:[...state.ricorrenti,{id:uid(),tipo,importo,desc,categoria:cat,metodo,chi,frequenza:freq,inizio,fine,note}]});}
   if(editingTxId){await updateTx(editingTxId,{tipo,importo,desc,categoria:cat,data,note,chi,metodo});toast('Transazione aggiornata ✓');}
   else{await addTx({tipo,importo,desc,categoria:cat,data,note,chi,metodo});toast('Transazione salvata ✓');}
   closeTxModal();
@@ -721,6 +777,8 @@ window.saveBudget=async function(){const cat=document.getElementById('budget-cat
 function renderAgenda(){renderCalendar();renderEventsList();renderBirthdays();}
 function renderCalendar(){
   const evDays=new Set(state.events.map(e=>e.data)),bdDays=new Set();
+  // Also mark ricorrenti days
+  const ricDays=new Set(getRicorrentiNextOccurrences().map(r=>r.data));
   state.birthdays.forEach(b=>{const[dd,mm]=b.date.split('/');bdDays.add(`${viewYear}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`);});
   const first=new Date(viewYear,viewMonth,1),last=new Date(viewYear,viewMonth+1,0),td=today();
   let h='';['Lu','Ma','Me','Gi','Ve','Sa','Do'].forEach(d=>{h+=`<div class="cal-day-name">${d}</div>`;});
@@ -728,17 +786,25 @@ function renderCalendar(){
   for(let i=0;i<off;i++)h+='<div class="cal-day other-month"></div>';
   for(let d=1;d<=last.getDate();d++){
     const ds=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const hasBd=bdDays.has(ds);
-    h+=`<div class="cal-day ${ds===td?'today':''} ${evDays.has(ds)||hasBd?'has-event':''}" style="${hasBd?'box-shadow:0 0 0 2px var(--purple) inset':''}">${d}</div>`;
+    const hasBd=bdDays.has(ds);const hasRic=ricDays.has(ds);
+    h+=`<div class="cal-day ${ds===td?'today':''} ${evDays.has(ds)||hasBd||hasRic?'has-event':''}" style="${hasBd?'box-shadow:0 0 0 2px var(--purple) inset':hasRic?'box-shadow:0 0 0 2px var(--red) inset':''}">${d}</div>`;
   }
   document.getElementById('cal-grid').innerHTML=h;
 }
 function renderEventsList(){
   const mk=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;
-  const evs=state.events.filter(e=>e.data.startsWith(mk)).sort((a,b)=>a.data.localeCompare(b.data));
+  const evs=[
+    ...state.events.filter(e=>e.data.startsWith(mk)),
+    ...getRicorrentiNextOccurrences()
+  ].sort((a,b)=>a.data.localeCompare(b.data));
   const el=document.getElementById('events-list');
   if(!evs.length){el.innerHTML='<div class="empty"><div class="empty-icon">📅</div>Nessun evento questo mese</div>';return;}
-  el.innerHTML=evs.map(e=>{const d=new Date(e.data+'T12:00:00');const mon=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][d.getMonth()];return`<div class="event-item"><div class="event-date-block"><div class="eday">${d.getDate()}</div><div class="emon">${mon}</div></div><div class="event-info" style="flex:1"><div class="etitle">${e.tipo} ${e.title}</div><div class="emeta">${e.time||''} ${e.note?'· '+e.note:''} ${e.reminder?'⏰ '+e.reminder+'gg':''}</div></div><button class="btn-danger" onclick="deleteEvent('${e.id}')">✕</button></div>`;}).join('');
+  el.innerHTML=evs.map(e=>{
+    const d=new Date(e.data+'T12:00:00');const mon=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'][d.getMonth()];
+    const deleteBtn=e.isRicorrente?'':`<button class="btn-danger" onclick="deleteEvent('${e.id}')">✕</button>`;
+    const ricBadge=e.isRicorrente?'<span class="badge badge-auto">🔁 auto</span>':'';
+    return`<div class="event-item"><div class="event-date-block"><div class="eday">${d.getDate()}</div><div class="emon">${mon}</div></div><div class="event-info" style="flex:1"><div class="etitle">${e.tipo} ${e.title}${ricBadge}</div><div class="emeta">${e.time||''} ${e.note?'· '+e.note:''} ${e.reminder&&!e.isRicorrente?'⏰ '+e.reminder+'gg':''}</div></div>${deleteBtn}</div>`;
+  }).join('');
 }
 function renderBirthdays(){
   const el=document.getElementById('birthdays-list');
@@ -787,7 +853,7 @@ window.deleteGoal=async function(id){if(!confirm('Eliminare?'))return;await save
 function renderListe(){
   const el=document.getElementById('liste-container');
   if(!state.liste.length){el.innerHTML='<div class="card"><div class="empty"><div class="empty-icon">✅</div>Nessuna lista.</div></div>';return;}
-  el.innerHTML=state.liste.map(lista=>{const items=lista.items||[],done=items.filter(i=>i.done).length,p=items.length?Math.round((done/items.length)*100):0;return`<div class="lista-card"><div class="progress-lista"><div class="progress-lista-fill" style="width:${p}%"></div></div><div class="lista-header"><div class="lista-title-wrap"><span style="font-size:20px">${lista.emoji||'📋'}</span><div><div class="lista-name">${lista.name}</div><div class="lista-count">${done}/${items.length} completati</div></div></div><div style="display:flex;gap:8px"><button class="btn btn-ghost btn-sm" onclick="clearDoneLista('${lista.id}')">Rimuovi fatti</button><button class="btn-danger" onclick="deleteLista('${lista.id}')">✕</button></div></div><div class="lista-items">${items.map(item=>`<div class="lista-item ${item.done?'done':''}"><div class="check-box ${item.done?'checked':''}" onclick="toggleItem('${lista.id}','${item.id}')"></div><div class="item-label" onclick="toggleItem('${lista.id}','${item.id}')">${item.text}</div><button class="btn-danger" onclick="deleteItem('${lista.id}','${item.id}')">✕</button></div>`).join('')}${!items.length?'<div style="padding:10px 18px;color:var(--muted);font-size:13px">Aggiungi il primo elemento ↓</div>':''}</div><div class="add-item-row"><input type="text" id="new-item-${lista.id}" placeholder="Aggiungi elemento..." onkeydown="if(event.key==='Enter')addItem('${lista.id}')"><button class="btn btn-primary btn-sm" onclick="addItem('${lista.id}')">+</button></div></div>`;}).join('');
+  el.innerHTML=state.liste.map(lista=>{const items=lista.items||[],done=items.filter(i=>i.done).length,p=items.length?Math.round((done/items.length)*100):0;return`<div class="lista-card"><div class="progress-lista"><div class="progress-lista-fill" style="width:${p}%"></div></div><div class="lista-header"><div class="lista-title-wrap"><span style="font-size:20px">${lista.emoji||'📋'}</span><div><div class="lista-name">${lista.name}</div><div class="lista-count">${done}/${items.length} completati</div></div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="exportLista('${lista.id}')" title="Copia/Condividi">📤</button><button class="btn btn-ghost btn-sm" onclick="printLista('${lista.id}')" title="Stampa">🖨️</button><button class="btn btn-ghost btn-sm" onclick="clearDoneLista('${lista.id}')">✕ Fatti</button><button class="btn-danger" onclick="deleteLista('${lista.id}')">✕</button></div></div><div class="lista-items">${items.map(item=>`<div class="lista-item ${item.done?'done':''}"><div class="check-box ${item.done?'checked':''}" onclick="toggleItem('${lista.id}','${item.id}')"></div><div class="item-label" onclick="toggleItem('${lista.id}','${item.id}')">${item.text}</div><button class="btn-danger" onclick="deleteItem('${lista.id}','${item.id}')">✕</button></div>`).join('')}${!items.length?'<div style="padding:10px 18px;color:var(--muted);font-size:13px">Aggiungi il primo elemento ↓</div>':''}</div><div class="add-item-row"><input type="text" id="new-item-${lista.id}" placeholder="Aggiungi elemento..." onkeydown="if(event.key==='Enter')addItem('${lista.id}')"><button class="btn btn-primary btn-sm" onclick="addItem('${lista.id}')">+</button></div></div>`;}).join('');
 }
 window.openListaModal=function(){document.getElementById('lista-name').value='';document.getElementById('lista-emoji').value='';document.getElementById('lista-modal').classList.add('open');};
 window.saveLista=async function(){const name=document.getElementById('lista-name').value.trim();if(!name){toast('Dai un nome alla lista','err');return;}await saveShared('liste',{list:[...state.liste,{id:uid(),name,emoji:document.getElementById('lista-emoji').value.trim()||'📋',tipo:document.getElementById('lista-tipo').value,items:[]}]});document.getElementById('lista-modal').classList.remove('open');toast('Lista creata ✓');};
@@ -797,14 +863,95 @@ window.toggleItem=async function(lid,iid){await saveShared('liste',{list:state.l
 window.deleteItem=async function(lid,iid){await saveShared('liste',{list:state.liste.map(l=>l.id!==lid?l:{...l,items:l.items.filter(i=>i.id!==iid)})});};
 window.clearDoneLista=async function(lid){await saveShared('liste',{list:state.liste.map(l=>l.id!==lid?l:{...l,items:l.items.filter(i=>!i.done)})});toast('Elementi completati rimossi');};
  
-// ===== RICORRENTI =====
+// ===== RICORRENTI DASHBOARD =====
+function renderRicorrentiDash(){
+  const el=document.getElementById('ricorrenti-dash');
+  const card=document.getElementById('ricorrenti-dash-card');
+  if(!state.ricorrenti.length){card.style.display='none';return;}
+  card.style.display='block';
+  const td=today();
+  const active=state.ricorrenti.filter(r=>!r.fine||r.fine>=monthKey()+'-01');
+  // Stima mensile: per ricorrenti non mensili mostriamo l'importo proporzionale
+  const freqMultiplier={settimanale:4.33,mensile:1,bimestrale:0.5,trimestrale:0.33,semestrale:0.17,annuale:0.083};
+  const totale=active.reduce((a,r)=>a+r.importo*(freqMultiplier[r.frequenza]||1),0);
+  // Per categoria
+  const bycat={};active.forEach(r=>{const mult=freqMultiplier[r.frequenza]||1;bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo*mult;});
+  const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Totale stimato/mese</div><div style="font-family:var(--font-mono);font-size:26px;font-weight:500;color:var(--red)">-€${fmt(totale)}</div></div><div style="font-size:12px;color:var(--muted)">${active.length} ricorrenti attive</div></div>`+
+  sorted.map(([id,amt])=>{const c=catById(id);return`<div class="cat-row"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${Math.min((amt/totale)*100,100)}%;background:${c.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;}).join('');
+}
+ 
+// ===== RICORRENTI (aggiornata con data fine e in agenda) =====
 function renderRicorrenti(){
   const el=document.getElementById('ricorrenti-list');
   if(!state.ricorrenti.length){el.innerHTML='<div class="card"><div class="empty"><div class="empty-icon">🔁</div>Nessuna spesa ricorrente.</div></div>';return;}
-  const FL={settimanale:'Ogni settimana',mensile:'Ogni mese',trimestrale:'Ogni 3 mesi',semestrale:'Ogni 6 mesi',annuale:'Ogni anno'};
-  el.innerHTML='<div class="card">'+state.ricorrenti.map(r=>{const cat=catById(r.categoria);return`<div class="ricorrente-item"><div class="tx-left"><div class="tx-icon">${cat.icon}</div><div><div class="tx-desc">${r.desc}</div><div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)}</div></div></div><div class="tx-right"><span class="tx-amount red">-€${fmt(r.importo)}</span><button class="btn-danger" onclick="deleteRicorrente('${r.id}')">✕</button></div></div>`;}).join('')+'</div>';
+  const FL={settimanale:'Ogni settimana',mensile:'Ogni mese',bimestrale:'Ogni 2 mesi',trimestrale:'Ogni 3 mesi',semestrale:'Ogni 6 mesi',annuale:'Ogni anno'};
+  const td=today();
+  el.innerHTML='<div class="card">'+state.ricorrenti.map(r=>{
+    const cat=catById(r.categoria);
+    const scaduta=r.fine&&r.fine<td;
+    const fineLbl=r.fine?`· fino al ${formatDate(r.fine)}`:'· nessuna scadenza';
+    return`<div class="ricorrente-item" style="${scaduta?'opacity:.5':''}"><div class="tx-left"><div class="tx-icon">${cat.icon}</div><div><div class="tx-desc">${r.desc}${scaduta?' <span class="badge" style="background:rgba(255,107,122,.15);color:var(--red)">Terminata</span>':''}</div><div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)} ${fineLbl}</div></div></div><div class="tx-right"><span class="tx-amount red">-€${fmt(r.importo)}</span><button class="btn-danger" onclick="deleteRicorrente('${r.id}')">✕</button></div></div>`;
+  }).join('')+'</div>';
 }
-window.deleteRicorrente=async function(id){if(!confirm('Eliminare?'))return;await saveShared('ricorrenti',{list:state.ricorrenti.filter(r=>r.id!==id)});toast('Ricorrente eliminata');};
+ 
+// In agenda mostra anche le ricorrenti imminenti come promemoria
+function getRicorrentiNextOccurrences(){
+  const events=[];const td=today();const todayD=new Date(td+'T12:00:00');
+  const mkStart=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-01`;
+  const mkEnd=new Date(viewYear,viewMonth+1,0);
+  state.ricorrenti.forEach(r=>{
+    if(r.fine&&r.fine<mkStart)return;
+    const ini=new Date(r.inizio+'T12:00:00');
+    const freqDays={settimanale:7,bimestrale:60,trimestrale:91,semestrale:182,annuale:365};
+    for(let d=1;d<=mkEnd.getDate();d++){
+      const ds=`${viewYear}-${String(viewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      if(shouldInsert(r,ds)){events.push({data:ds,title:`🔁 ${r.desc}`,tipo:'💸',note:`-€${fmt(r.importo)} (ricorrente)`,time:'',reminder:'',isRicorrente:true});}
+    }
+  });
+  return events;
+}
+ 
+// ===== BUONI SPESA =====
+function renderBuoni(){
+  const el=document.getElementById('buoni-summary'),list=document.getElementById('buoni-list');
+  const mk=monthKey();const mBuoni=state.buoni.filter(b=>b.mese===mk);
+  const totQty=mBuoni.reduce((a,b)=>a+b.qty,0);const totVal=totQty*7;
+  const xSpesa=mBuoni.filter(b=>b.uso==='spesa'||b.uso==='misto').reduce((a,b)=>a+b.qty,0);
+  const xPasti=mBuoni.filter(b=>b.uso==='pasti'||b.uso==='misto').reduce((a,b)=>a+b.qty,0);
+  el.innerHTML=`<div class="summary-grid">
+    <div class="summary-card"><div class="label">🎟️ Buoni questo mese</div><div class="amount green">${totQty}</div><div class="sub">= €${fmt(totVal)} valore totale</div></div>
+    <div class="summary-card"><div class="label">🛒 Per spesa</div><div class="amount blue">${xSpesa} buoni</div><div class="sub">= €${fmt(xSpesa*7)}</div></div>
+    <div class="summary-card"><div class="label">🍱 Per pasti lavoro</div><div class="amount purple">${xPasti} buoni</div><div class="sub">= €${fmt(xPasti*7)}</div></div>
+  </div>`;
+  if(!mBuoni.length){list.innerHTML='<div class="empty"><div class="empty-icon">🎟️</div>Nessun buono registrato questo mese</div>';return;}
+  const usoLabel={spesa:'🛒 Spesa supermercato',pasti:'🍱 Pasti lavoro',misto:'🔀 Misto'};
+  list.innerHTML=mBuoni.map(b=>`<div class="ricorrente-item"><div class="tx-left"><div class="tx-icon">🎟️</div><div><div class="tx-desc">${b.qty} buoni — ${usoLabel[b.uso]||b.uso}</div><div class="tx-meta">€${fmt(b.qty*7)} · ${b.note||''}</div></div></div><button class="btn-danger" onclick="deleteBuono('${b.id}')">✕</button></div>`).join('');
+}
+window.openBuoniModal=function(){['buoni-qty','buoni-note'].forEach(id=>document.getElementById(id).value='');document.getElementById('buoni-uso').value='spesa';document.getElementById('buoni-modal').classList.add('open');};
+window.saveBuoni=async function(){
+  const qty=parseInt(document.getElementById('buoni-qty').value)||0;if(!qty){toast('Inserisci il numero di buoni','err');return;}
+  const uso=document.getElementById('buoni-uso').value,note=document.getElementById('buoni-note').value.trim();
+  await saveShared('buoni',{list:[...state.buoni,{id:uid(),qty,uso,note,mese:monthKey(),data:today()}]});
+  document.getElementById('buoni-modal').classList.remove('open');toast(`${qty} buoni registrati ✓`);
+};
+window.deleteBuono=async function(id){if(!confirm('Eliminare?'))return;await saveShared('buoni',{list:state.buoni.filter(b=>b.id!==id)});toast('Eliminato');};
+ 
+// ===== LISTE EXPORT =====
+window.exportLista=function(lid){
+  const lista=state.liste.find(l=>l.id===lid);if(!lista)return;
+  const items=lista.items||[];
+  const text=`📋 ${lista.name}\n\n`+items.map(i=>`${i.done?'✅':'⬜'} ${i.text}`).join('\n');
+  if(navigator.share){navigator.share({title:lista.name,text}).catch(()=>{});}
+  else{navigator.clipboard.writeText(text).then(()=>toast('Lista copiata negli appunti ✓')).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Lista copiata ✓');});}
+};
+window.printLista=function(lid){
+  const lista=state.liste.find(l=>l.id===lid);if(!lista)return;
+  const items=lista.items||[];
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${lista.name}</title><style>body{font-family:sans-serif;padding:20px;max-width:500px}h1{font-size:20px;margin-bottom:16px}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #eee;display:flex;gap:10px;font-size:15px}.done{text-decoration:line-through;color:#999}</style></head><body><h1>${lista.emoji||'📋'} ${lista.name}</h1><ul>${items.map(i=>`<li><span>${i.done?'☑':'☐'}</span><span class="${i.done?'done':''}">${i.text}</span></li>`).join('')}</ul><p style="margin-top:20px;font-size:12px;color:#999">Our Family — ${new Date().toLocaleDateString('it-IT')}</p></body></html>`);
+  w.document.close();w.print();
+};
  
 // ===== GRAFICI STORICI =====
 async function renderGrafici(){
