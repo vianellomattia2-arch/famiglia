@@ -189,22 +189,33 @@
 </style>
 </head>
 <body data-theme="dark-midnight">
-
+ 
 <div class="loading-overlay" id="loading-screen">
   <div style="font-size:36px">🏠</div><div class="spinner"></div>
   <div style="color:var(--muted);font-size:14px;">Connessione in corso...</div>
 </div>
-
+<!-- Fallback: nascondi loading dopo 3 secondi comunque -->
+<script>
+  setTimeout(function(){
+    var ls=document.getElementById('loading-screen');
+    if(ls&&!ls.classList.contains('hidden')){
+      ls.classList.add('hidden');
+      var lk=document.getElementById('lock-screen');
+      if(lk)lk.classList.remove('hidden');
+    }
+  },3000);
+</script>
+ 
 <div id="lock-screen" class="hidden">
   <div style="font-size:40px">🏠</div>
   <div class="lock-title">Our <span style="color:var(--accent)">Family</span> ❤️</div>
-
+ 
   <!-- STEP 1: scegli profilo -->
   <div id="lock-step-profiles">
     <div class="lock-sub" style="margin-bottom:16px">Chi sei?</div>
     <div id="profile-buttons" style="display:flex;flex-direction:column;gap:10px;width:240px"></div>
   </div>
-
+ 
   <!-- STEP 2: inserisci PIN -->
   <div id="lock-step-pin" style="display:none;flex-direction:column;align-items:center;gap:16px">
     <div style="display:flex;align-items:center;gap:10px">
@@ -223,7 +234,7 @@
       <button class="pin-btn" onclick="backPin()" style="font-size:14px">⌫</button>
     </div>
   </div>
-
+ 
   <!-- STEP 3: benvenuto -->
   <div id="lock-step-welcome" style="display:none;flex-direction:column;align-items:center;gap:12px;text-align:center">
     <div id="welcome-avatar" style="font-size:48px"></div>
@@ -231,9 +242,9 @@
     <div style="color:var(--muted);font-size:14px">Bentornato/a!</div>
   </div>
 </div>
-
+ 
 <div id="child-banner">👦 Modalità Figlio — Vista limitata</div>
-
+ 
 <header>
   <div class="logo">Our <span>Family</span> ❤️</div>
   <div class="header-right">
@@ -245,7 +256,7 @@
     </div>
   </div>
 </header>
-
+ 
 <nav id="main-nav">
   <button class="tab active" onclick="showPage('dashboard',this)">📊 Dashboard</button>
   <button class="tab" onclick="showPage('entrate',this)">💰 Transazioni</button>
@@ -266,7 +277,7 @@
   <button class="tab" onclick="showPage('agenda',this)">📅 Agenda</button>
   <button class="tab" onclick="showPage('famiglia',this)">👨‍👩‍👦 Famiglia</button>
 </nav>
-
+ 
 <main>
   <!-- DASHBOARD -->
   <div class="page active" id="page-dashboard">
@@ -278,7 +289,7 @@
     <div class="card"><div class="card-title">Ultime transazioni</div><ul class="tx-list" id="recent-tx"></ul></div>
     <div class="tip"><div class="tip-header">💡 Consiglio del giorno</div><div id="tip-text"></div></div>
   </div>
-
+ 
   <!-- TRANSAZIONI -->
   <div class="page" id="page-entrate">
     <div class="section-header"><div class="section-title">Transazioni</div><button class="btn btn-primary btn-sm" onclick="openTxModal()">+ Aggiungi</button></div>
@@ -299,14 +310,14 @@
       <div style="padding:0 16px;"><ul class="tx-list" id="all-tx"></ul></div>
     </div>
   </div>
-
+ 
   <!-- BUDGET -->
   <div class="page" id="page-budget">
     <div class="section-header"><div class="section-title">Budget mensile</div><button class="btn btn-primary btn-sm" onclick="openBudgetModal()">+ Imposta</button></div>
     <div id="budget-list"></div>
     <div class="tip"><div class="tip-header">📌 Come funziona</div>Imposta un tetto per ogni categoria. Sopra l'80% vedrai un avviso, se superi il limite vedrai SUPERATO in rosso.</div>
   </div>
-
+ 
   <!-- AGENDA -->
   <div class="page" id="page-agenda">
     <div class="section-header"><div class="section-title">Agenda</div><button class="btn btn-primary btn-sm" onclick="openEventModal()">+ Evento</button></div>
@@ -314,27 +325,27 @@
     <div class="card"><div class="card-title">Eventi del mese</div><div id="events-list"></div></div>
     <div class="card"><div class="card-title">🎂 Compleanni e ricorrenze</div><div id="birthdays-list"></div><div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="openBirthdayModal()">+ Aggiungi compleanno</button></div></div>
   </div>
-
+ 
   <!-- RISPARMI -->
   <div class="page" id="page-risparmi">
     <div class="section-header"><div class="section-title">Obiettivi</div><button class="btn btn-primary btn-sm" onclick="openGoalModal()">+ Obiettivo</button></div>
     <div id="goals-list"></div>
     <div class="tip"><div class="tip-header">🎯 Regola del 50/30/20</div>Il <strong>50%</strong> per i bisogni, il <strong>30%</strong> per i desideri, il <strong>20%</strong> per il risparmio.</div>
   </div>
-
+ 
   <!-- LISTE -->
   <div class="page" id="page-liste">
     <div class="section-header"><div class="section-title">Liste</div><button class="btn btn-primary btn-sm" onclick="openListaModal()">+ Nuova lista</button></div>
     <div id="liste-container"></div>
   </div>
-
+ 
   <!-- RICORRENTI -->
   <div class="page" id="page-ricorrenti">
     <div class="section-header"><div class="section-title">Spese ricorrenti</div><button class="btn btn-primary btn-sm" onclick="openTxModal(null,true)">+ Aggiungi</button></div>
     <div id="ricorrenti-list"></div>
     <div class="tip"><div class="tip-header">🔁 Come funziona</div>Vengono inserite automaticamente ogni mese appena apri l'app nel giorno giusto. Puoi impostare una data di fine per fermarle.</div>
   </div>
-
+ 
   <!-- BUONI SPESA -->
   <div class="page" id="page-buoni">
     <div class="section-header"><div class="section-title">🎟️ Buoni spesa</div><button class="btn btn-primary btn-sm" onclick="openBuoniModal()">+ Registra</button></div>
@@ -342,7 +353,7 @@
     <div class="card"><div class="card-title">Utilizzi questo mese</div><div id="buoni-list"></div></div>
     <div class="tip"><div class="tip-header">🎟️ Come funziona</div>I buoni valgono <strong>€7 cadauno</strong>. Registra quanti ne ricevi e come li usi (spesa supermercato o pasti lavoro). Il totale conta come entrata mensile.</div>
   </div>
-
+ 
   <!-- GRAFICI -->
   <div class="page" id="page-grafici">
     <div class="section-header"><div class="section-title">Grafici storici</div></div>
@@ -350,7 +361,7 @@
     <div class="card"><div class="card-title">Saldo progressivo — ultimi 6 mesi</div><div class="chart-wrap"><canvas id="chart-saldo"></canvas></div></div>
     <div class="card"><div class="card-title">Spese per categoria — mese corrente</div><div class="chart-wrap"><canvas id="chart-cat"></canvas></div></div>
   </div>
-
+ 
   <!-- SALDI -->
   <div class="page" id="page-saldi">
     <div class="section-header"><div class="section-title">Saldi conti</div><button class="btn btn-primary btn-sm" onclick="openSaldoModal()">+ Conto</button></div>
@@ -358,23 +369,23 @@
     <div class="card"><div class="card-title">Aggiorna saldo</div><div id="saldi-list"></div></div>
     <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci i saldi reali (conto corrente, deposito, ecc.). Aggiorni manualmente quando vuoi.</div>
   </div>
-
+ 
   <!-- REPORT -->
   <div class="page" id="page-report">
     <div class="section-header"><div class="section-title">Report mensile</div><button class="btn btn-ghost btn-sm" onclick="window.print()">🖨️ Stampa</button></div>
     <div id="report-content"></div>
   </div>
-
+ 
   <!-- FAMIGLIA -->
   <div class="page" id="page-famiglia">
     <div class="section-header"><div class="section-title">Famiglia</div></div>
     <div id="famiglia-content"></div>
   </div>
-
+ 
   <!-- IMPOSTAZIONI -->
   <div class="page" id="page-impostazioni">
     <div class="section-title" style="margin-bottom:16px;">Impostazioni</div>
-
+ 
     <!-- Sub-tab nav -->
     <div style="display:flex;gap:4px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;overflow-x:auto">
       <button class="tab active" id="stab-aspetto" onclick="showSettingsTab('aspetto',this)" style="border-radius:8px;flex:1">🎨 Aspetto</button>
@@ -382,7 +393,7 @@
       <button class="tab" id="stab-accessi" onclick="showSettingsTab('accessi',this)" style="border-radius:8px;flex:1">🔓 Accessi</button>
       <button class="tab" id="stab-altro" onclick="showSettingsTab('altro',this)" style="border-radius:8px;flex:1">⚙️ Altro</button>
     </div>
-
+ 
     <!-- TAB: Aspetto -->
     <div id="stab-content-aspetto">
       <div class="card">
@@ -391,7 +402,7 @@
         <div class="theme-section" style="margin-bottom:0"><div class="theme-section-title">☀️ Temi chiari</div><div class="theme-grid" id="light-themes"></div></div>
       </div>
     </div>
-
+ 
     <!-- TAB: Profili -->
     <div id="stab-content-profili" style="display:none">
       <div class="tip" style="margin-bottom:16px">
@@ -401,7 +412,7 @@
       <div id="profiles-list-cards" style="margin-bottom:12px"></div>
       <div id="add-profile-btn-wrap"><button class="btn btn-primary btn-sm" onclick="openProfileModal()">+ Aggiungi profilo</button></div>
     </div>
-
+ 
     <!-- TAB: Accessi -->
     <div id="stab-content-accessi" style="display:none">
       <div class="card">
@@ -409,7 +420,7 @@
         <div id="accessi-list"><div style="color:var(--muted);font-size:13px;padding:10px 0">Caricamento...</div></div>
       </div>
     </div>
-
+ 
     <!-- TAB: Altro -->
     <div id="stab-content-altro" style="display:none">
       <div class="card">
@@ -434,9 +445,9 @@
     </div>
   </div>
 </main>
-
+ 
 <div id="toast"></div>
-
+ 
 <!-- MODALI -->
 <div class="modal-overlay" id="tx-modal">
   <div class="modal">
@@ -504,13 +515,13 @@
 <div class="modal-overlay" id="saldo-modal">
   <div class="modal"><div class="modal-title">Nuovo conto</div><div class="form-row single"><label>Nome conto</label><input type="text" id="saldo-name" placeholder="Es. Conto corrente, Deposito..."></div><div class="form-row single"><label>Saldo attuale (€)</label><input type="number" id="saldo-amount" placeholder="0.00" step="0.01"></div><div class="form-row single"><label>Emoji</label><input type="text" id="saldo-emoji" placeholder="🏦" maxlength="2"></div><div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById('saldo-modal').classList.remove('open')">Annulla</button><button class="btn btn-primary" onclick="saveSaldo()">Salva</button></div></div>
 </div>
-
+ 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import{getFirestore,doc,setDoc,onSnapshot,collection,addDoc,deleteDoc,updateDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyBIULZU-xPRvWIeM4Gv0igKotbEX2DzRnc",authDomain:"app-family-ff2ff.firebaseapp.com",projectId:"app-family-ff2ff",storageBucket:"app-family-ff2ff.firebasestorage.app",messagingSenderId:"451030699741",appId:"1:451030699741:web:0996d1f452cd2d992bd534"};
 const app=initializeApp(firebaseConfig);const db=getFirestore(app);
-
+ 
 // ===== TEMI =====
 const THEMES={
   dark:[{id:'dark-midnight',name:'Midnight',bg:'#0f1117',surface:'#1a1f2e',accent:'#6c9fff',green:'#4fd89e'},{id:'dark-forest',name:'Forest',bg:'#0d1a14',surface:'#162417',accent:'#5fd49a',green:'#4fd89e'},{id:'dark-sunset',name:'Sunset',bg:'#1a0f0f',surface:'#2a1a1a',accent:'#ff8c6b',green:'#4fd89e'},{id:'dark-ocean',name:'Ocean',bg:'#090f1a',surface:'#101e30',accent:'#40c4ff',green:'#4fd89e'}],
@@ -524,7 +535,7 @@ function renderThemePicker(){
 }
 window.applyTheme=function(id){document.body.setAttribute('data-theme',id);localStorage.setItem('cn_theme',id);renderThemePicker();saveShared('settings',{...state.settings,theme:id});};
 function loadTheme(){document.body.setAttribute('data-theme',localStorage.getItem('cn_theme')||'dark-midnight');}
-
+ 
 // ===== CATEGORIE =====
 const CATEGORIES={
   uscita:[
@@ -553,11 +564,11 @@ window.populateCatSelect=function(selId,tipo){
   cats.forEach(c=>{if(!g[c.group])g[c.group]=[];g[c.group].push(c);});
   sel.innerHTML=Object.entries(g).map(([gr,items])=>`<optgroup label="${gr}">${items.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</optgroup>`).join('');
 };
-
+ 
 // ===== STATE =====
 let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[]};
 let isChildMode=false,pinTarget='adult',charts={};
-
+ 
 // ===== PROFILI =====
 function getProfiles(){
   const raw=localStorage.getItem('cn_profiles');
@@ -571,10 +582,10 @@ function getProfiles(){
   return defaults;
 }
 function saveProfiles(profiles){localStorage.setItem('cn_profiles',JSON.stringify(profiles));}
-
+ 
 let selectedProfileId=null;
 let pinBuffer='';
-
+ 
 function renderLockProfiles(){
   const profiles=getProfiles();
   const wrap=document.getElementById('profile-buttons');
@@ -584,7 +595,7 @@ function renderLockProfiles(){
       <div><div style="font-size:15px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>
     </button>`).join('');
 }
-
+ 
 window.selectProfile=function(id){
   selectedProfileId=id;
   const p=getProfiles().find(x=>x.id===id);
@@ -599,14 +610,14 @@ window.selectProfile=function(id){
   document.getElementById('lock-step-pin').style.display='flex';
   document.getElementById('lock-error').textContent='';
 };
-
+ 
 window.backToProfiles=function(){
   pinBuffer='';
   document.getElementById('lock-step-pin').style.display='none';
   document.getElementById('lock-step-profiles').style.display='block';
   document.getElementById('lock-error').textContent='';
 };
-
+ 
 window.addPin=function(d){
   const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
   if(!p)return;
@@ -617,7 +628,7 @@ window.addPin=function(d){
 window.backPin=function(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('lock-error').textContent='';};
 window.clearPin=function(){pinBuffer='';updatePinDots();document.getElementById('lock-error').textContent='';};
 function updatePinDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
-
+ 
 async function checkPin(){
   const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
   if(!p)return;
@@ -632,7 +643,7 @@ async function checkPin(){
   sessionStorage.setItem('cn_profile_id',p.id);
   sessionStorage.setItem('cn_profile_name',p.name);
   sessionStorage.setItem('cn_profile_emoji',p.emoji||'👤');
-
+ 
   // Registra accesso su Firestore
   try{
     await addDoc(collection(db,'accessi'),{
@@ -640,14 +651,14 @@ async function checkPin(){
       data:serverTimestamp(),dispositivo:navigator.userAgent.slice(0,80)
     });
   }catch(e){}
-
+ 
   // Mostra welcome screen
   document.getElementById('lock-step-pin').style.display='none';
   document.getElementById('lock-step-welcome').style.display='flex';
   document.getElementById('welcome-avatar').textContent=p.emoji||'👤';
   document.getElementById('welcome-name').textContent=p.name;
   document.getElementById('child-banner').innerHTML=`${p.emoji||'👦'} Modalità ${p.name} — ${p.ruolo==='figlio'?'Vista limitata':'Accesso completo'}`;
-
+ 
   setTimeout(()=>{
     document.getElementById('lock-screen').classList.add('hidden');
     if(isChildMode){
@@ -663,16 +674,16 @@ async function checkPin(){
     }
   },1200);
 }
-
+ 
 // ===== MESE =====
 const now=new Date();let viewYear=now.getFullYear(),viewMonth=now.getMonth();
 function monthKey(){return`${viewYear}-${String(viewMonth+1).padStart(2,'0')}`;}
 function updateMonthLabel(){const M=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];document.getElementById('current-month').textContent=`${M[viewMonth]} ${viewYear}`;}
 window.changeMonth=function(d){viewMonth+=d;if(viewMonth>11){viewMonth=0;viewYear++;}if(viewMonth<0){viewMonth=11;viewYear--;}updateMonthLabel();listenTransactions();};
-
+ 
 // ===== SYNC =====
 function setSyncStatus(s){const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');dot.className='';if(s==='online'){dot.classList.add('online');lbl.textContent='Sincronizzato';}if(s==='syncing'){dot.classList.add('syncing');lbl.textContent='Salvataggio...';}if(s==='error'){dot.classList.add('error');lbl.textContent='Offline';}}
-
+ 
 // ===== FIREBASE =====
 let unsubTx=null;
 function listenTransactions(){
@@ -712,7 +723,7 @@ async function addTx(tx){setSyncStatus('syncing');try{await addDoc(collection(db
 async function updateTx(id,tx){setSyncStatus('syncing');try{await updateDoc(doc(db,'transactions',monthKey(),'items',id),tx);setSyncStatus('online');}catch(e){setSyncStatus('error');throw e;}}
 async function deleteTxFS(id){setSyncStatus('syncing');try{await deleteDoc(doc(db,'transactions',monthKey(),'items',id));setSyncStatus('online');}catch(e){setSyncStatus('error');throw e;}}
 async function saveShared(key,data){setSyncStatus('syncing');try{await setDoc(doc(db,'shared',key),data);setSyncStatus('online');}catch(e){setSyncStatus('error');throw e;}}
-
+ 
 // Carica storia
 const historyCache={};
 async function fetchHistoryMonths(num=5){
@@ -730,7 +741,7 @@ async function fetchHistoryMonths(num=5){
   }
   await Promise.all(promises);return results;
 }
-
+ 
 // ===== RICORRENTI AUTO =====
 function checkRicorrenti(){
   const td=today(),proc=JSON.parse(localStorage.getItem('cn_proc')||'{}');
@@ -753,7 +764,7 @@ function shouldInsert(r,td){
   if(r.frequenza==='annuale')return ini.getDate()===ogg.getDate()&&ini.getMonth()===ogg.getMonth();
   return false;
 }
-
+ 
 // ===== PROMEMORIA =====
 function renderReminders(){
   const todayD=new Date();todayD.setHours(0,0,0,0);const items=[];
@@ -778,28 +789,15 @@ function renderReminders(){
     return`<div class="reminder-item"><div class="reminder-dot" style="${cls};width:10px;height:10px;border-radius:50%;flex-shrink:0"></div><div style="flex:1;font-size:14px">${it.label}</div><div style="font-size:12px;color:var(--muted);font-family:var(--font-mono)">${lbl}</div></div>`;
   }).join('');
 }
-
+ 
 // ===== INIT =====
 function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
 function init(){
-  loadTheme();updateMonthLabel();
-  // Timeout di sicurezza: se dopo 6 secondi siamo ancora in loading, mostriamo comunque l'app
-  const safetyTimer=setTimeout(()=>{
-    const ls=document.getElementById('loading-screen');
-    if(ls&&!ls.classList.contains('hidden')){
-      ls.classList.add('hidden');
-      setSyncStatus('error');
-      renderLockProfiles();
-      document.getElementById('lock-screen').classList.remove('hidden');
-    }
-  },6000);
-  // Prova a inizializzare Firebase
-  try{
-    // Piccolo test di connettività
-    onSnapshot(doc(db,'shared','settings'),()=>{},{});
-  }catch(e){console.warn('Firebase init warning:',e);}
-  clearTimeout(safetyTimer);
+  loadTheme();
+  updateMonthLabel();
+  // Nascondi subito lo schermo di caricamento — non aspettiamo Firebase
   document.getElementById('loading-screen').classList.add('hidden');
+  // Mostra subito login o app
   if(getPinUnlocked()){
     const mode=sessionStorage.getItem('cn_mode')||'adulto';
     const name=sessionStorage.getItem('cn_profile_name')||'';
@@ -808,19 +806,29 @@ function init(){
     document.getElementById('child-banner').innerHTML=`${emoji} ${name}${isChildMode?' — Vista limitata':''}`;
     if(isChildMode){
       document.getElementById('child-banner').classList.add('show');
-      document.getElementById('main-nav').style.display='none';document.getElementById('child-nav').style.display='';
+      document.getElementById('main-nav').style.display='none';
+      document.getElementById('child-nav').style.display='';
       document.getElementById('month-nav-wrap').style.display='none';
-      listenShared();showPage('liste',document.querySelector('#child-nav .tab'));
+      listenShared();
+      showPage('liste',document.querySelector('#child-nav .tab'));
     }else{
-      document.getElementById('main-nav').style.display='';document.getElementById('child-nav').style.display='none';
-      listenTransactions();listenShared();
+      document.getElementById('main-nav').style.display='';
+      document.getElementById('child-nav').style.display='none';
+      listenTransactions();
+      listenShared();
     }
   }else{
     renderLockProfiles();
     document.getElementById('lock-screen').classList.remove('hidden');
   }
 }
-
+// Chiamata immediata appena il DOM è pronto
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',init);
+}else{
+  init();
+}
+ 
 // ===== NAV =====
 let currentFilter='tutte';
 window.showPage=function(name,btn){
@@ -845,7 +853,7 @@ function renderPage(name){
   if(name==='impostazioni'){renderSettings();renderThemePicker();}
 }
 function renderAll(){const a=document.querySelector('.page.active')?.id?.replace('page-','');if(a)renderPage(a);}
-
+ 
 // ===== DASHBOARD =====
 function renderDashboard(){
   const txs=state.transactions,td=today();
@@ -881,7 +889,7 @@ function renderDashboard(){
   const ul=document.getElementById('recent-tx');
   ul.innerHTML=recent.length?recent.map(t=>txHtml(t,false)).join(''):'<div class="empty"><div class="empty-icon">🧾</div>Nessuna transazione</div>';
 }
-
+ 
 // ===== TRANSAZIONI =====
 function txHtml(t,showActions=false){
   const cat=catById(t.categoria),sign=t.tipo==='entrata'?'+':'-',color=t.tipo==='entrata'?'var(--green)':'var(--red)';
@@ -935,7 +943,7 @@ window.saveTx=async function(){
   else{await addTx({tipo,importo,desc,categoria:cat,data,note,chi,metodo});toast('Transazione salvata ✓');}
   closeTxModal();
 };
-
+ 
 // ===== BUDGET =====
 function renderBudget(){
   const el=document.getElementById('budget-list');
@@ -948,7 +956,7 @@ function renderBudget(){
 }
 window.openBudgetModal=function(){populateCatSelect('budget-cat','uscita');document.getElementById('budget-amount').value='';document.getElementById('budget-modal').classList.add('open');};
 window.saveBudget=async function(){const cat=document.getElementById('budget-cat').value,amount=parseFloat(document.getElementById('budget-amount').value);if(!amount){toast('Inserisci un importo','err');return;}await saveShared('budgets',{...state.budgets,[cat]:amount});document.getElementById('budget-modal').classList.remove('open');toast('Budget impostato ✓');};
-
+ 
 // ===== AGENDA =====
 function renderAgenda(){renderCalendar();renderEventsList();renderBirthdays();}
 function renderCalendar(){
@@ -1013,7 +1021,7 @@ window.saveBirthday=async function(){
   document.getElementById('birthday-modal').classList.remove('open');toast('Compleanno salvato ✓');
 };
 window.deleteBirthday=async function(id){if(!confirm('Eliminare?'))return;await saveShared('birthdays',{list:state.birthdays.filter(b=>b.id!==id)});toast('Eliminato');};
-
+ 
 // ===== GOALS =====
 function renderGoals(){
   const el=document.getElementById('goals-list');
@@ -1024,7 +1032,7 @@ window.openGoalModal=function(){['goal-name','goal-emoji'].forEach(id=>document.
 window.saveGoal=async function(){const name=document.getElementById('goal-name').value.trim(),target=parseFloat(document.getElementById('goal-target').value);if(!name||!target){toast('Compila nome e obiettivo','err');return;}await saveShared('goals',{list:[...state.goals,{id:uid(),name,target,current:parseFloat(document.getElementById('goal-current').value)||0,emoji:document.getElementById('goal-emoji').value.trim()||'🎯'}]});document.getElementById('goal-modal').classList.remove('open');toast('Obiettivo creato ✓');};
 window.addToGoal=async function(id){const amt=parseFloat(document.getElementById('add-'+id).value);if(!amt||amt<=0)return;await saveShared('goals',{list:state.goals.map(g=>g.id===id?{...g,current:Math.min(g.current+amt,g.target)}:g)});toast(`+€${fmt(amt)} aggiunto ✓`);};
 window.deleteGoal=async function(id){if(!confirm('Eliminare?'))return;await saveShared('goals',{list:state.goals.filter(g=>g.id!==id)});toast('Obiettivo eliminato');};
-
+ 
 // ===== LISTE =====
 function renderListe(){
   const el=document.getElementById('liste-container');
@@ -1038,7 +1046,7 @@ window.addItem=async function(lid){const input=document.getElementById('new-item
 window.toggleItem=async function(lid,iid){await saveShared('liste',{list:state.liste.map(l=>l.id!==lid?l:{...l,items:l.items.map(i=>i.id===iid?{...i,done:!i.done}:i)})});};
 window.deleteItem=async function(lid,iid){await saveShared('liste',{list:state.liste.map(l=>l.id!==lid?l:{...l,items:l.items.filter(i=>i.id!==iid)})});};
 window.clearDoneLista=async function(lid){await saveShared('liste',{list:state.liste.map(l=>l.id!==lid?l:{...l,items:l.items.filter(i=>!i.done)})});toast('Elementi completati rimossi');};
-
+ 
 // ===== RICORRENTI DASHBOARD =====
 function renderRicorrentiDash(){
   const el=document.getElementById('ricorrenti-dash');
@@ -1056,7 +1064,7 @@ function renderRicorrentiDash(){
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Totale stimato/mese</div><div style="font-family:var(--font-mono);font-size:26px;font-weight:500;color:var(--red)">-€${fmt(totale)}</div></div><div style="font-size:12px;color:var(--muted)">${active.length} ricorrenti attive</div></div>`+
   sorted.map(([id,amt])=>{const c=catById(id);return`<div class="cat-row"><span class="cat-icon">${c.icon}</span><span class="cat-name">${c.label}</span><div class="cat-bar-wrap"><div class="cat-bar"><div class="cat-bar-fill" style="width:${Math.min((amt/totale)*100,100)}%;background:${c.color}"></div></div></div><span class="cat-amount">€${fmt(amt)}</span></div>`;}).join('');
 }
-
+ 
 // ===== RICORRENTI (aggiornata con data fine e in agenda) =====
 function renderRicorrenti(){
   const el=document.getElementById('ricorrenti-list');
@@ -1070,7 +1078,7 @@ function renderRicorrenti(){
     return`<div class="ricorrente-item" style="${scaduta?'opacity:.5':''}"><div class="tx-left"><div class="tx-icon">${cat.icon}</div><div><div class="tx-desc">${r.desc}${scaduta?' <span class="badge" style="background:rgba(255,107,122,.15);color:var(--red)">Terminata</span>':''}</div><div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)} ${fineLbl}</div></div></div><div class="tx-right"><span class="tx-amount red">-€${fmt(r.importo)}</span><button class="btn-danger" onclick="deleteRicorrente('${r.id}')">✕</button></div></div>`;
   }).join('')+'</div>';
 }
-
+ 
 // In agenda mostra anche le ricorrenti imminenti come promemoria
 function getRicorrentiNextOccurrences(){
   const events=[];const td=today();const todayD=new Date(td+'T12:00:00');
@@ -1087,7 +1095,7 @@ function getRicorrentiNextOccurrences(){
   });
   return events;
 }
-
+ 
 // ===== BUONI SPESA =====
 function renderBuoni(){
   const el=document.getElementById('buoni-summary'),list=document.getElementById('buoni-list');
@@ -1112,7 +1120,7 @@ window.saveBuoni=async function(){
   document.getElementById('buoni-modal').classList.remove('open');toast(`${qty} buoni registrati ✓`);
 };
 window.deleteBuono=async function(id){if(!confirm('Eliminare?'))return;await saveShared('buoni',{list:state.buoni.filter(b=>b.id!==id)});toast('Eliminato');};
-
+ 
 // ===== LISTE EXPORT =====
 window.exportLista=function(lid){
   const lista=state.liste.find(l=>l.id===lid);if(!lista)return;
@@ -1128,7 +1136,7 @@ window.printLista=function(lid){
   w.document.write(`<!DOCTYPE html><html><head><title>${lista.name}</title><style>body{font-family:sans-serif;padding:20px;max-width:500px}h1{font-size:20px;margin-bottom:16px}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #eee;display:flex;gap:10px;font-size:15px}.done{text-decoration:line-through;color:#999}</style></head><body><h1>${lista.emoji||'📋'} ${lista.name}</h1><ul>${items.map(i=>`<li><span>${i.done?'☑':'☐'}</span><span class="${i.done?'done':''}">${i.text}</span></li>`).join('')}</ul><p style="margin-top:20px;font-size:12px;color:#999">Our Family — ${new Date().toLocaleDateString('it-IT')}</p></body></html>`);
   w.document.close();w.print();
 };
-
+ 
 // ===== GRAFICI STORICI =====
 async function renderGrafici(){
   const history=await fetchHistoryMonths(5);
@@ -1156,7 +1164,7 @@ async function renderGrafici(){
   if(!ce.length){catCanvas.parentElement.innerHTML='<div class="empty">Nessuna spesa questo mese</div>';return;}
   charts.cat=new Chart(catCanvas,{type:'doughnut',data:{labels:ce.map(([id])=>catById(id).icon+' '+catById(id).label),datasets:[{data:ce.map(([,v])=>+v.toFixed(2)),backgroundColor:ce.map(([id])=>catById(id).color+'cc'),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:tc,font:{family:'DM Sans',size:11},boxWidth:12}}}}});
 }
-
+ 
 // ===== SALDI CONTI =====
 function renderSaldi(){
   const grid=document.getElementById('conto-grid'),list=document.getElementById('saldi-list');
@@ -1169,7 +1177,7 @@ window.openSaldoModal=function(){['saldo-name','saldo-emoji'].forEach(id=>docume
 window.saveSaldo=async function(){const name=document.getElementById('saldo-name').value.trim(),amount=parseFloat(document.getElementById('saldo-amount').value)||0;if(!name){toast('Dai un nome al conto','err');return;}await saveShared('saldi',{list:[...state.saldi,{id:uid(),name,amount,emoji:document.getElementById('saldo-emoji').value.trim()||'🏦',updated:today()}]});document.getElementById('saldo-modal').classList.remove('open');toast('Conto aggiunto ✓');};
 window.updateSaldo=async function(id){const val=parseFloat(document.getElementById('upd-'+id).value)||0;await saveShared('saldi',{list:state.saldi.map(s=>s.id===id?{...s,amount:val,updated:today()}:s)});toast('Saldo aggiornato ✓');};
 window.deleteSaldo=async function(id){if(!confirm('Eliminare?'))return;await saveShared('saldi',{list:state.saldi.filter(s=>s.id!==id)});toast('Conto eliminato');};
-
+ 
 // ===== REPORT =====
 function renderReport(){
   const txs=state.transactions;
@@ -1198,7 +1206,7 @@ function renderReport(){
     ${chiRows?`<div class="card"><div class="card-title">👤 Uscite per persona</div>${chiRows}</div>`:''}
     <div class="card"><div class="card-title">📝 Tutte le transazioni</div><ul class="tx-list">${[...txs].sort((a,b)=>new Date(a.data)-new Date(b.data)).map(t=>txHtml(t,false)).join('')}</ul></div>`;
 }
-
+ 
 // ===== FAMIGLIA =====
 function renderFamiglia(){
   const el=document.getElementById('famiglia-content');
@@ -1223,7 +1231,7 @@ function renderFamiglia(){
     </div>
     <div class="tip"><div class="tip-header">👦 Modalità figlio</div>Condividi il PIN figlio con i bambini. Vedranno solo le liste, l'agenda e questa sezione — mai le finanze.</div>`;
 }
-
+ 
 // ===== GESTIONE PROFILI (impostazioni) =====
 let editingProfileId=null;
 window.openProfileModal=function(id=null){
@@ -1276,23 +1284,6 @@ window.deleteProfile=function(id){
   if(profiles.length===0){toast('Deve esserci almeno un profilo','err');return;}
   saveProfiles(profiles);renderSettingsProfiles();toast('Profilo eliminato');
 };
-function renderSettingsProfiles(){
-  const profiles=getProfiles();
-  const el=document.getElementById('profiles-list');
-  el.innerHTML=profiles.map(p=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:24px">${p.emoji||'👤'}</span>
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:500">${p.name}</div>
-        <div style="font-size:12px;color:var(--muted)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'} · PIN: ${'•'.repeat(p.pin.length)}</div>
-      </div>
-      <button class="btn-edit" onclick="openProfileModal('${p.id}')">✏️</button>
-      <button class="btn-danger" onclick="deleteProfile('${p.id}')">✕</button>
-    </div>`).join('');
-  const addBtn=document.getElementById('add-profile-btn-wrap');
-  if(addBtn)addBtn.style.display=profiles.length>=4?'none':'block';
-}
-
 // ===== ACCESSI LOG =====
 async function renderAccessiLog(){
   const el=document.getElementById('accessi-list');if(!el)return;
@@ -1314,7 +1305,7 @@ async function renderAccessiLog(){
     }).join('');
   }catch(e){el.innerHTML='<div style="color:var(--muted);font-size:13px">Impossibile caricare gli accessi</div>';}
 }
-
+ 
 // ===== IMPOSTAZIONI =====
 function renderSettings(){
   const n=state.settings.names||['',''];const n1=document.getElementById('name1'),n2=document.getElementById('name2');
@@ -1328,7 +1319,7 @@ function renderSettings(){
   else if(activeName==='accessi')renderAccessiLog();
   else renderThemePicker(); // default: aspetto
 }
-
+ 
 // ===== IMPOSTAZIONI SUB-TAB =====
 window.showSettingsTab=function(name,btn){
   ['aspetto','profili','accessi','altro'].forEach(t=>{
@@ -1341,7 +1332,7 @@ window.showSettingsTab=function(name,btn){
   if(name==='accessi')renderAccessiLog();
   if(name==='aspetto')renderThemePicker();
 };
-
+ 
 function renderSettingsProfiles(){
   const profiles=getProfiles();
   const el=document.getElementById('profiles-list-cards');
@@ -1371,9 +1362,8 @@ function formatDate(s){if(!s)return'';const[y,m,d]=s.split('-');return`${d}/${m}
 let toastTimer;
 function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=type==='err'?'var(--red)':'var(--green)';el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2500);}
 window.toast=toast;
-
+ 
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
-init();
 </script>
 </body>
 </html>
