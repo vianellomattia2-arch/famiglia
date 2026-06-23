@@ -2446,8 +2446,16 @@ function renderDashboard(){
   const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
   const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0); // include prelievi: scalano dal conto
-  const sOra=entrate-uscite,sFine=eAll-uAll;
+  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+
+  // SALDO DISPONIBILE = Conti correnti + Portafogli contanti + Buoni pasto residui
+  const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
+  const portafoglio=calcolaPortafoglio();
+  const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
+  const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0); // somma netta (positivi - negativi)
+  const totaleBuoni=Math.max(0,tuttiBuoni)*7;
+  const sOra=totaleConti+totaleContanti+totaleBuoni;
+
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
 
@@ -2460,11 +2468,15 @@ function renderDashboard(){
   const ha=document.getElementById('dash-hero-amount');
   if(ha){ha.textContent=`€${fmt(Math.abs(sOra))}`;ha.style.color='#fff';}
   const hs=document.getElementById('dash-hero-sub');
-  if(hs)hs.textContent=sOra>=0?'disponibile ad oggi':'in negativo ad oggi';
+  if(hs)hs.textContent=`🏦 €${fmt(totaleConti)} · 💵 €${fmt(totaleContanti)} · 🎟️ €${fmt(totaleBuoni)}`;
   const he=document.getElementById('dash-hero-entrate');if(he)he.textContent=`+€${fmt(entrate)}`;
   const hu=document.getElementById('dash-hero-uscite');if(hu)hu.textContent=`-€${fmt(uscite)}`;
   const hf=document.getElementById('dash-hero-fine');
-  if(hf){hf.textContent=`€${fmt(sFine)}`;hf.style.color=sFine>=0?'rgba(255,255,255,.9)':'#ffb3bb';}
+  if(hf){
+    const cartaDisp=Math.max(0,limCarta-usatoCarta);
+    hf.textContent=`💳 €${fmt(cartaDisp)} disp.`;
+    hf.style.color='rgba(255,255,255,.9)';
+  }
 
   // Hero clickable
   const heroClickEl=document.getElementById('dash-hero-amount')?.closest('.dash-hero');
