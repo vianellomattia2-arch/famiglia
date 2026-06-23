@@ -485,6 +485,8 @@
         <button class="pin-btn" onclick="addPin(0)">0</button>
         <button class="pin-btn" onclick="backPin()" style="font-size:18px">⌫</button>
       </div>
+      <!-- Bottone visibile solo in modalità impostazione PIN (primo accesso dispositivo) -->
+      <button id="confirm-set-pin-btn" onclick="confirmSetPin()" style="display:none;width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Conferma PIN →</button>
     </div>
 
     <!-- STEP 3: benvenuto -->
@@ -1519,22 +1521,55 @@ window.populateCatSelect=function(selId,tipo){
 let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
 let isChildMode=false,pinTarget='adult',charts={};
 
-// ===== PROFILI =====
-function getProfiles(){
-  const raw=localStorage.getItem('cn_profiles');
-  if(raw)try{
-    const profiles=JSON.parse(raw);
-    // Migrazione: se nessun profilo è admin, promuovi il primo adulto
-    if(profiles.length>0&&!profiles.find(p=>p.ruolo==='admin')){
-      profiles[0].ruolo='admin';
-      localStorage.setItem('cn_profiles',JSON.stringify(profiles));
-    }
-    return profiles;
-  }catch(e){}
-  return []; // nessun profilo — mostra setup
+// ===== PROFILI — Firestore-backed =====
+// Profili (nome, emoji, ruolo) → shared/profili su Firestore (condivisi tra dispositivi)
+// PIN → localStorage locale come hash SHA-256 (mai in chiaro su Firestore)
+
+async function hashPin(pin){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pin));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function hasProfiles(){return getProfiles().length>0;}
-function saveProfiles(profiles){localStorage.setItem('cn_profiles',JSON.stringify(profiles));}
+
+// Cache locale profili (aggiornata da onSnapshot)
+let _profiles=[];
+function getProfiles(){return _profiles;}
+function hasProfiles(){return _profiles.length>0;}
+
+function getPinHash(profileId){
+  return localStorage.getItem('cn_pin_'+profileId)||null;
+}
+async function savePinHash(profileId,pin){
+  const h=await hashPin(pin);
+  localStorage.setItem('cn_pin_'+profileId,h);
+}
+async function checkPinHash(profileId,pin){
+  const stored=getPinHash(profileId);
+  if(!stored)return false;
+  return stored===await hashPin(pin);
+}
+
+// Salva profili su Firestore (solo admin)
+async function saveProfiles(profiles){
+  _profiles=profiles;
+  await saveShared('profili',{list:profiles});
+}
+
+// Listener profili da Firestore — aggiorna _profiles e re-renderizza lock screen
+function listenProfiles(onReady){
+  onSnapshot(doc(db,'shared','profili'),snap=>{
+    const list=snap.exists()?(snap.data().list||[]):[];
+    _profiles=list;
+    // Se siamo ancora sulla lock screen, re-renderizza
+    const ls=document.getElementById('lock-screen');
+    if(ls&&!ls.classList.contains('hidden')){
+      const pinStep=document.getElementById('lock-step-pin');
+      if(pinStep&&pinStep.style.display==='none'){
+        renderLockProfiles();
+      }
+    }
+    if(onReady)onReady();
+  });
+}
 
 let selectedProfileId=null;
 let pinBuffer='';
@@ -1572,23 +1607,22 @@ function updateSetupPinDots(){
     dot.classList.toggle('filled',i<setupPinBuffer.length);
   });
 }
-window.completeSetup=function(){
+window.completeSetup=async function(){
   const name=document.getElementById('setup-name')?.value.trim();
   const errEl=document.getElementById('setup-error');
   if(!name){errEl.textContent='Inserisci il tuo nome';return;}
   if(setupPinBuffer.length<4){errEl.textContent='Il PIN deve avere almeno 4 cifre';return;}
-  // Crea profilo admin
   const adminProfile={
     id:'admin_'+Date.now(),
     name,
     emoji:setupEmoji,
-    ruolo:'admin',
-    pin:setupPinBuffer
+    ruolo:'admin'
+    // PIN NON va su Firestore — solo hash locale
   };
-  saveProfiles([adminProfile]);
+  await savePinHash(adminProfile.id,setupPinBuffer);
+  await saveProfiles([adminProfile]);
   setupPinBuffer='';
   errEl.textContent='';
-  // Vai direttamente al login
   document.getElementById('lock-step-setup').style.display='none';
   renderLockProfiles();
   document.getElementById('lock-step-profiles').style.display='block';
@@ -1614,9 +1648,16 @@ window.selectProfile=function(id){
   selectedProfileId=id;
   const p=getProfiles().find(x=>x.id===id);
   if(!p)return;
-  // Aggiorna PIN display dots in base alla lunghezza del PIN
-  const pinLen=p.pin.length;
-  document.getElementById('pin-display').innerHTML=Array(pinLen).fill('<div class="pin-dot"></div>').join('');
+  // Controlla se il PIN è impostato localmente su questo dispositivo
+  if(!getPinHash(id)){
+    // PIN non ancora impostato su questo dispositivo — chiedi di impostarlo
+    document.getElementById('lock-step-profiles').style.display='none';
+    showSetPinForDevice(p);
+    return;
+  }
+  // PIN presente — mostra schermata inserimento
+  const pinLen=6; // lunghezza massima, i pallini si adattano dinamicamente
+  document.getElementById('pin-display').innerHTML=Array(6).fill('<div class="pin-dot"></div>').join('');
   document.getElementById('lock-selected-profile').innerHTML=`<div class="profile-emoji">${p.emoji||'👤'}</div><div><div style="font-size:15px;font-weight:600;color:#fff">${p.name}</div><div style="font-size:11px;color:rgba(255,255,255,.4)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>`;
   document.getElementById('lock-sub-text').textContent=`PIN di ${p.name}`;
   pinBuffer='';updatePinDots();
@@ -1626,18 +1667,50 @@ window.selectProfile=function(id){
 };
 
 window.backToProfiles=function(){
-  pinBuffer='';
+  pinBuffer='';_setPinBuffer='';
+  window._settingPinMode=false;
+  document.getElementById('confirm-set-pin-btn').style.display='none';
   document.getElementById('lock-step-pin').style.display='none';
   document.getElementById('lock-step-profiles').style.display='block';
   document.getElementById('lock-error').textContent='';
 };
 
+// Primo accesso su questo dispositivo per un profilo esistente su Firestore
+let _setPinBuffer='';
+function showSetPinForDevice(p){
+  _setPinBuffer='';
+  window._settingPinMode=true;
+  document.getElementById('pin-display').innerHTML=Array(6).fill('<div class="pin-dot"></div>').join('');
+  document.getElementById('lock-selected-profile').innerHTML=`<div class="profile-emoji">${p.emoji||'👤'}</div><div><div style="font-size:15px;font-weight:600;color:#fff">${p.name}</div><div style="font-size:11px;color:rgba(255,255,255,.4)">Primo accesso su questo dispositivo</div></div>`;
+  document.getElementById('lock-sub-text').textContent='Scegli il tuo PIN per questo dispositivo';
+  document.getElementById('lock-error').textContent='';
+  document.getElementById('confirm-set-pin-btn').style.display='none';
+  document.getElementById('lock-step-pin').style.display='flex';
+}
+
 window.addPin=function(d){
-  const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
-  if(!p)return;
-  if(pinBuffer.length>=p.pin.length)return;
+  if(window._settingPinMode){
+    if(_setPinBuffer.length>=6)return;
+    _setPinBuffer+=String(d);
+    const display=document.getElementById('pin-display');
+    if(display)display.querySelectorAll('.pin-dot').forEach((dot,i)=>dot.classList.toggle('filled',i<_setPinBuffer.length));
+    // Mostra bottone conferma dopo almeno 4 cifre
+    document.getElementById('confirm-set-pin-btn').style.display=_setPinBuffer.length>=4?'block':'none';
+    return;
+  }
+  if(pinBuffer.length>=6)return;
   pinBuffer+=String(d);updatePinDots();
-  if(pinBuffer.length===p.pin.length)checkPin();
+  if(pinBuffer.length>=4)setTimeout(()=>{if(pinBuffer.length>=4)checkPin();},300);
+};
+
+window.confirmSetPin=async function(){
+  if(_setPinBuffer.length<4){document.getElementById('lock-error').textContent='Il PIN deve avere almeno 4 cifre';return;}
+  await savePinHash(selectedProfileId,_setPinBuffer);
+  window._settingPinMode=false;
+  _setPinBuffer='';
+  document.getElementById('confirm-set-pin-btn').style.display='none';
+  toast('PIN impostato ✓');
+  selectProfile(selectedProfileId);
 };
 window.backPin=function(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('lock-error').textContent='';};
 window.clearPin=function(){pinBuffer='';updatePinDots();document.getElementById('lock-error').textContent='';};
@@ -1658,9 +1731,10 @@ function updatePinDots(){
 }
 
 async function checkPin(){
-  const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
+  const p=getProfiles().find(x=>x.id===selectedProfileId);
   if(!p)return;
-  if(pinBuffer!==p.pin){
+  const ok=await checkPinHash(selectedProfileId,pinBuffer);
+  if(!ok){
     document.getElementById('lock-error').textContent='PIN errato, riprova';
     pinBuffer='';updatePinDots();return;
   }
@@ -1861,13 +1935,16 @@ function init(){
   startApp();
 }
 function startApp(){
-  if(!hasProfiles()){
-    // Prima apertura — mostra setup
-    showSetup();
-    return;
-  }
-  if(getPinUnlocked()){
-    const mode=sessionStorage.getItem('cn_mode')||'adulto';
+  // Prima carica i profili da Firestore, poi decide cosa mostrare
+  listenProfiles(()=>{
+    if(_profilesInitDone)return; // evita doppia esecuzione
+    _profilesInitDone=true;
+    if(!hasProfiles()){
+      showSetup();
+      return;
+    }
+    if(getPinUnlocked()){
+      const mode=sessionStorage.getItem('cn_mode')||'adulto';
     const name=sessionStorage.getItem('cn_profile_name')||'';
     const emoji=sessionStorage.getItem('cn_profile_emoji')||'👤';
     isChildMode=mode==='figlio';
@@ -1892,8 +1969,10 @@ function startApp(){
   }else{
     renderLockProfiles();
     document.getElementById('lock-screen').classList.remove('hidden');
-  }
+    }
+  });
 }
+let _profilesInitDone=false;
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',init);
 }else{
@@ -3913,7 +3992,7 @@ window.openProfileModal=function(id=null){
   document.getElementById('prof-error').textContent='';
   document.getElementById('profile-modal').classList.add('open');
 };
-window.saveProfile=function(){
+window.saveProfile=async function(){
   const name=document.getElementById('prof-name').value.trim();
   const emoji=document.getElementById('prof-emoji').value.trim()||'👤';
   const ruolo=document.getElementById('prof-ruolo').value;
@@ -3926,31 +4005,36 @@ window.saveProfile=function(){
   const profiles=getProfiles();
   if(editingProfileId){
     const idx=profiles.findIndex(x=>x.id===editingProfileId);if(idx<0)return;
+    // PIN NON va su Firestore — aggiorna solo hash locale se fornito
     profiles[idx]={...profiles[idx],name,emoji,ruolo};
-    if(pin)profiles[idx].pin=pin;
+    delete profiles[idx].pin; // rimuovi PIN legacy se presente
+    if(pin)await savePinHash(editingProfileId,pin);
   }else{
     if(profiles.length>=4){err.textContent='Massimo 4 profili';return;}
     if(!pin){err.textContent='Inserisci un PIN per il nuovo profilo';return;}
-    profiles.push({id:uid(),name,emoji,ruolo,pin});
+    const newId=uid();
+    profiles.push({id:newId,name,emoji,ruolo});
+    await savePinHash(newId,pin);
   }
-  saveProfiles(profiles);
+  await saveProfiles(profiles);
   document.getElementById('profile-modal').classList.remove('open');
   renderSettingsProfiles();
   toast('Profilo salvato ✓');
 };
-window.deleteProfile=function(id){
+window.deleteProfile=async function(id){
   if(!confirm('Eliminare questo profilo?'))return;
   const profiles=getProfiles().filter(p=>p.id!==id);
   if(profiles.length===0){toast('Deve esserci almeno un profilo','err');return;}
-  saveProfiles(profiles);renderSettingsProfiles();toast('Profilo eliminato');
+  localStorage.removeItem('cn_pin_'+id);
+  await saveProfiles(profiles);renderSettingsProfiles();toast('Profilo eliminato');
 };
-window.transferAdmin=function(newAdminId){
+window.transferAdmin=async function(newAdminId){
   if(!confirm('Rendere questo profilo Admin? Il profilo attuale perderà il ruolo Admin.'))return;
   const profiles=getProfiles().map(p=>({
     ...p,
     ruolo: p.id===newAdminId ? 'admin' : (p.ruolo==='admin' ? 'adulto' : p.ruolo)
   }));
-  saveProfiles(profiles);
+  await saveProfiles(profiles);
   renderSettingsProfiles();
   toast('Ruolo Admin trasferito ✓');
 };
@@ -4014,7 +4098,7 @@ function renderSettingsProfiles(){
       <div style="flex:1">
         <div style="font-size:15px;font-weight:600">${p.name}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:3px">${p.ruolo==='admin'?'⭐ Admin — accesso completo + gestione profili':p.ruolo==='figlio'?'👦 Vista limitata — solo Liste, Agenda, Famiglia':'👨‍💼 Accesso completo'}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">PIN: ${'•'.repeat(p.pin.length)} (${p.pin.length} cifre)</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">PIN: impostato localmente per dispositivo</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="openProfileModal('${p.id}')">✏️ Modifica</button>
