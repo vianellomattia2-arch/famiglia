@@ -2191,8 +2191,7 @@ function renderDashboardClassica(){
 }
 
 // ===== TRANSAZIONI =====
-function txHtml
-  const cat=catById(t.categoria),sign=t.tipo==='entrata'?'+':'-',color=t.tipo==='entrata'?'var(--green)':'var(--red)';
+function txHtml(t,showActions=false){  const cat=catById(t.categoria),sign=t.tipo==='entrata'?'+':'-',color=t.tipo==='entrata'?'var(--green)':'var(--red)';
   const metodoLabels={conto:'💳',carta:'💜 carta',buoni:'🎟️ buoni',contanti_io:'💵 miei',contanti_lei:'💵 Ilaria',misto:'🔀 misto'};
   let metodoBadge='';
   if(t.metodo==='carta')metodoBadge='<span class="badge badge-carta">💜 carta</span>';
