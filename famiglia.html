@@ -335,18 +335,21 @@
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
   .modal-title{font-family:var(--font-serif);font-size:20px;margin-bottom:20px;}
   .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
-  #lock-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+  #lock-screen{position:fixed;inset:0;background:linear-gradient(145deg,#0a0f1e 0%,#0f1117 50%,#12091a 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;}
   #lock-screen.hidden{display:none;}
   .lock-title{font-family:var(--font-serif);font-size:28px;}
   .lock-sub{color:var(--muted);font-size:14px;}
-  #pin-display{display:flex;gap:10px;margin-top:6px;}
-  .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted);transition:background .1s;}
-  .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
-  .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:240px;}
-  .pin-btn{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:12px;padding:16px;font-size:20px;cursor:pointer;transition:all .1s;font-family:var(--font-sans);}
-  .pin-btn:hover{background:var(--surface2);border-color:var(--accent);}
-  .pin-btn:active{transform:scale(.95);}
-  #lock-error{color:var(--red);font-size:13px;height:18px;}
+  .profile-btn{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;cursor:pointer;color:#fff;font-size:15px;font-weight:500;transition:all .2s;width:100%;text-align:left;}
+  .profile-btn:hover{background:rgba(255,255,255,.11);border-color:rgba(108,159,255,.45);transform:translateY(-1px);}
+  .profile-emoji{font-size:28px;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  #pin-display{display:flex;gap:12px;margin:4px 0;}
+  .pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.3);background:transparent;transition:all .15s;}
+  .pin-dot.filled{background:#6c9fff;border-color:#6c9fff;box-shadow:0 0 8px rgba(108,159,255,.5);}
+  .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px;}
+  .pin-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);color:#fff;border-radius:16px;font-size:22px;font-weight:400;height:64px;cursor:pointer;transition:all .1s;font-family:var(--font-sans);}
+  .pin-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(108,159,255,.3);}
+  .pin-btn:active{background:rgba(108,159,255,.25);transform:scale(.95);}
+  #lock-error{color:#ff6b7a;font-size:13px;min-height:18px;text-align:center;}
   .loading-overlay{position:fixed;inset:0;background:var(--bg);z-index:998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;}
   .loading-overlay.hidden{display:none;}
   .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
@@ -392,39 +395,59 @@
 </script>
 
 <div id="lock-screen" class="hidden">
-  <div style="font-size:40px">🏠</div>
-  <div class="lock-title">Our <span style="color:var(--accent)">Family</span> ❤️</div>
-
-  <!-- STEP 1: scegli profilo -->
-  <div id="lock-step-profiles">
-    <div class="lock-sub" style="margin-bottom:16px">Chi sei?</div>
-    <div id="profile-buttons" style="display:flex;flex-direction:column;gap:10px;width:240px"></div>
+  <!-- Background decorativo -->
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;top:-20%;right:-10%;width:60vmin;height:60vmin;border-radius:50%;background:radial-gradient(circle,rgba(108,159,255,.18),transparent 70%)"></div>
+    <div style="position:absolute;bottom:-15%;left:-10%;width:50vmin;height:50vmin;border-radius:50%;background:radial-gradient(circle,rgba(180,143,255,.14),transparent 70%)"></div>
   </div>
 
-  <!-- STEP 2: inserisci PIN -->
-  <div id="lock-step-pin" style="display:none;flex-direction:column;align-items:center;gap:16px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <button onclick="backToProfiles()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px">‹</button>
-      <div class="lock-sub" id="lock-sub-text">Inserisci il PIN</div>
-    </div>
-    <div id="lock-selected-profile" style="display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 18px"></div>
-    <div id="pin-display"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
-    <div id="lock-error"></div>
-    <div class="pin-pad">
-      <button class="pin-btn" onclick="addPin(1)">1</button><button class="pin-btn" onclick="addPin(2)">2</button><button class="pin-btn" onclick="addPin(3)">3</button>
-      <button class="pin-btn" onclick="addPin(4)">4</button><button class="pin-btn" onclick="addPin(5)">5</button><button class="pin-btn" onclick="addPin(6)">6</button>
-      <button class="pin-btn" onclick="addPin(7)">7</button><button class="pin-btn" onclick="addPin(8)">8</button><button class="pin-btn" onclick="addPin(9)">9</button>
-      <button class="pin-btn" onclick="clearPin()" style="font-size:14px;color:var(--muted)">✕</button>
-      <button class="pin-btn" onclick="addPin(0)">0</button>
-      <button class="pin-btn" onclick="backPin()" style="font-size:14px">⌫</button>
-    </div>
-  </div>
+  <!-- Contenuto centrato -->
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;max-width:420px;padding:32px 24px">
 
-  <!-- STEP 3: benvenuto -->
-  <div id="lock-step-welcome" style="display:none;flex-direction:column;align-items:center;gap:12px;text-align:center">
-    <div id="welcome-avatar" style="font-size:48px"></div>
-    <div id="welcome-name" style="font-family:var(--font-serif);font-size:26px"></div>
-    <div style="color:var(--muted);font-size:14px">Bentornato/a!</div>
+    <!-- Logo + titolo -->
+    <div style="margin-bottom:32px;text-align:center">
+      <div style="width:88px;height:88px;border-radius:28px;background:linear-gradient(135deg,#2dd4bf,#6c9fff,#b48fff);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 20px;box-shadow:0 12px 40px rgba(108,159,255,.35)">🏠</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:clamp(28px,6vw,42px);line-height:1;margin-bottom:8px">Our <span style="color:#6c9fff">Family</span> <span style="color:#ff6b7a">❤️</span></div>
+      <div style="font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.5px">La tua app finanziaria familiare</div>
+    </div>
+
+    <!-- STEP 1: scegli profilo -->
+    <div id="lock-step-profiles" style="width:100%">
+      <div style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,.35);text-align:center;margin-bottom:16px">Chi sei?</div>
+      <div id="profile-buttons" style="display:flex;flex-direction:column;gap:10px;width:100%"></div>
+    </div>
+
+    <!-- STEP 2: inserisci PIN -->
+    <div id="lock-step-pin" style="display:none;flex-direction:column;align-items:center;gap:16px;width:100%">
+      <div style="display:flex;align-items:center;gap:10px;width:100%">
+        <button onclick="backToProfiles()" style="background:rgba(255,255,255,.08);border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:20px;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center">‹</button>
+        <div id="lock-sub-text" style="font-size:14px;color:rgba(255,255,255,.5)">Inserisci il PIN</div>
+      </div>
+      <div id="lock-selected-profile" style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:12px 20px;width:100%"></div>
+      <div id="pin-display" style="display:flex;gap:12px;margin:4px 0">
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+        <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+      </div>
+      <div id="lock-error" style="color:#ff6b7a;font-size:13px;min-height:18px"></div>
+      <div class="pin-pad">
+        <button class="pin-btn" onclick="addPin(1)">1</button><button class="pin-btn" onclick="addPin(2)">2</button><button class="pin-btn" onclick="addPin(3)">3</button>
+        <button class="pin-btn" onclick="addPin(4)">4</button><button class="pin-btn" onclick="addPin(5)">5</button><button class="pin-btn" onclick="addPin(6)">6</button>
+        <button class="pin-btn" onclick="addPin(7)">7</button><button class="pin-btn" onclick="addPin(8)">8</button><button class="pin-btn" onclick="addPin(9)">9</button>
+        <button class="pin-btn" onclick="clearPin()" style="font-size:14px;color:rgba(255,255,255,.4)">✕</button>
+        <button class="pin-btn" onclick="addPin(0)">0</button>
+        <button class="pin-btn" onclick="backPin()" style="font-size:18px">⌫</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: benvenuto -->
+    <div id="lock-step-welcome" style="display:none;flex-direction:column;align-items:center;gap:16px;text-align:center">
+      <div id="welcome-avatar" style="font-size:64px;filter:drop-shadow(0 8px 24px rgba(0,0,0,.3))"></div>
+      <div id="welcome-name" style="font-family:'DM Serif Display',serif;font-size:clamp(24px,5vw,36px)"></div>
+      <div style="color:rgba(255,255,255,.45);font-size:14px">Bentornato/a!</div>
+    </div>
+
+    <!-- Copyright -->
+    <div style="margin-top:40px;font-size:11px;color:rgba(255,255,255,.2);text-align:center">© 2026 Mattia Vianello</div>
   </div>
 </div>
 
@@ -1436,9 +1459,13 @@ function renderLockProfiles(){
   const profiles=getProfiles();
   const wrap=document.getElementById('profile-buttons');
   wrap.innerHTML=profiles.map(p=>`
-    <button onclick="selectProfile('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;transition:all .15s;width:100%;text-align:left" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
-      <span style="font-size:28px">${p.emoji||'👤'}</span>
-      <div><div style="font-size:15px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>
+    <button class="profile-btn" onclick="selectProfile('${p.id}')">
+      <div class="profile-emoji">${p.emoji||'👤'}</div>
+      <div>
+        <div style="font-size:15px;font-weight:600;color:#fff">${p.name}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div>
+      </div>
+      <div style="margin-left:auto;color:rgba(255,255,255,.2);font-size:18px">›</div>
     </button>`).join('');
 }
 
@@ -1449,7 +1476,7 @@ window.selectProfile=function(id){
   // Aggiorna PIN display dots in base alla lunghezza del PIN
   const pinLen=p.pin.length;
   document.getElementById('pin-display').innerHTML=Array(pinLen).fill('<div class="pin-dot"></div>').join('');
-  document.getElementById('lock-selected-profile').innerHTML=`<span style="font-size:24px">${p.emoji||'👤'}</span><div><div style="font-size:15px;font-weight:600;color:var(--text)">${p.name}</div><div style="font-size:11px;color:var(--muted)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>`;
+  document.getElementById('lock-selected-profile').innerHTML=`<div class="profile-emoji">${p.emoji||'👤'}</div><div><div style="font-size:15px;font-weight:600;color:#fff">${p.name}</div><div style="font-size:11px;color:rgba(255,255,255,.4)">${p.ruolo==='figlio'?'👦 Vista limitata':'👨‍💼 Accesso completo'}</div></div>`;
   document.getElementById('lock-sub-text').textContent=`PIN di ${p.name}`;
   pinBuffer='';updatePinDots();
   document.getElementById('lock-step-profiles').style.display='none';
@@ -1668,7 +1695,9 @@ function renderReminders(){
 // ===== INIT =====
 function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
 function init(){
-  loadTheme();loadFont();loadLayout();updateMonthLabel();
+  // Prima del login: tema neutro dark-midnight indipendentemente dal profilo
+  document.body.setAttribute('data-theme','dark-midnight');
+  loadLayout();updateMonthLabel();
   document.getElementById('loading-screen').classList.add('hidden');
   startApp();
 }
@@ -1999,8 +2028,7 @@ function renderDashboard(){
   const style=getDashStyle();
   if(style==='classica'){renderDashboardClassica();return;}
   // ===== VISTA MODERNA =====
-  // Mostra elementi moderni, nascondi classici
-  const hero=document.getElementById('dash-hero-card');if(hero)hero.style.display='block';
+  const heroEl=document.getElementById('dash-hero-card');if(heroEl)heroEl.style.display='block';
   const mini=document.getElementById('dash-mini-cards');if(mini)mini.style.display='grid';
   const sg=document.getElementById('summary-grid-classic');if(sg)sg.style.display='none';
   const cw=document.getElementById('carta-classic-wrap');if(cw)cw.innerHTML='';
@@ -2017,14 +2045,10 @@ function renderDashboard(){
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
 
   // HERO CARD
-  const hero=document.getElementById('dash-hero-card');
-  if(hero){
-    // Colora hero in base al saldo
-    if(sOra>=0){
-      hero.style.background='linear-gradient(135deg,var(--accent),var(--purple))';
-    }else{
-      hero.style.background='linear-gradient(135deg,#ff6b7a,#b43060)';
-    }
+  if(heroEl){
+    heroEl.style.background=sOra>=0
+      ?'linear-gradient(135deg,var(--accent),var(--purple))'
+      :'linear-gradient(135deg,#ff6b7a,#b43060)';
   }
   const ha=document.getElementById('dash-hero-amount');
   if(ha){ha.textContent=`€${fmt(Math.abs(sOra))}`;ha.style.color='#fff';}
