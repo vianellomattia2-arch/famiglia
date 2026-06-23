@@ -457,6 +457,7 @@
       </div>
       <div id="setup-error" style="color:#ff7a87;font-size:13px;text-align:center;min-height:18px;margin-bottom:8px"></div>
       <button onclick="completeSetup()" style="width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Crea profilo Admin →</button>
+      <button onclick="resetAllProfiles()" style="background:none;border:none;color:rgba(255,255,255,.2);font-size:11px;cursor:pointer;margin-top:4px;font-family:var(--font-sans);text-decoration:underline">Reset completo (emergenza)</button>
     </div>
 
     <!-- STEP 1: scegli profilo -->
@@ -1612,16 +1613,18 @@ window.completeSetup=async function(){
   const errEl=document.getElementById('setup-error');
   if(!name){errEl.textContent='Inserisci il tuo nome';return;}
   if(setupPinBuffer.length<4){errEl.textContent='Il PIN deve avere almeno 4 cifre';return;}
+  // Pulisci tutti gli hash PIN locali rimasti da tentativi precedenti
+  Object.keys(localStorage).filter(k=>k.startsWith('cn_pin_')).forEach(k=>localStorage.removeItem(k));
   const adminProfile={
     id:'admin_'+Date.now(),
     name,
     emoji:setupEmoji,
     ruolo:'admin'
-    // PIN NON va su Firestore — solo hash locale
   };
   await savePinHash(adminProfile.id,setupPinBuffer);
   await saveProfiles([adminProfile]);
   setupPinBuffer='';
+  updateSetupPinDots();
   errEl.textContent='';
   document.getElementById('lock-step-setup').style.display='none';
   renderLockProfiles();
@@ -1925,8 +1928,18 @@ function renderReminders(){
   }).join('');
 }
 
-// ===== INIT =====
-function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
+// ===== RESET PROFILI (emergenza) =====
+// Usabile da console: resetAllProfiles()
+window.resetAllProfiles=async function(){
+  // Pulisce hash PIN locali
+  Object.keys(localStorage).filter(k=>k.startsWith('cn_pin_')).forEach(k=>localStorage.removeItem(k));
+  // Pulisce profili su Firestore
+  await saveShared('profili',{list:[]});
+  // Pulisce sessione
+  sessionStorage.clear();
+  toast('Reset completato — ricarica la pagina');
+  setTimeout(()=>location.reload(),1500);
+};
 function init(){
   // Prima del login: tema neutro dark-midnight indipendentemente dal profilo
   document.body.setAttribute('data-theme','dark-midnight');
