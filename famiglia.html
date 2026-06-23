@@ -1928,6 +1928,9 @@ function renderReminders(){
   }).join('');
 }
 
+// ===== INIT =====
+function getPinUnlocked(){return sessionStorage.getItem('cn_unlocked')==='1';}
+
 // ===== RESET PROFILI (emergenza) =====
 // Usabile da console: resetAllProfiles()
 window.resetAllProfiles=async function(){
@@ -1948,10 +1951,12 @@ function init(){
   startApp();
 }
 function startApp(){
-  // Prima carica i profili da Firestore, poi decide cosa mostrare
+  // Mostra schermata di caricamento mentre aspetta profili da Firestore
+  document.getElementById('loading-screen').classList.remove('hidden');
   listenProfiles(()=>{
-    if(_profilesInitDone)return; // evita doppia esecuzione
+    if(_profilesInitDone)return;
     _profilesInitDone=true;
+    document.getElementById('loading-screen').classList.add('hidden');
     if(!hasProfiles()){
       showSetup();
       return;
