@@ -1696,20 +1696,25 @@ function showSetPinForDevice(p){
 }
 
 window.addPin=function(d){
-  if(window._settingPinMode){
-    if(_setPinBuffer.length>=6)return;
-    _setPinBuffer+=String(d);
-    const display=document.getElementById('pin-display');
-    if(display)display.querySelectorAll('.pin-dot').forEach((dot,i)=>dot.classList.toggle('filled',i<_setPinBuffer.length));
-    // Mostra bottone conferma dopo almeno 4 cifre
-    document.getElementById('confirm-set-pin-btn').style.display=_setPinBuffer.length>=4?'block':'none';
-    return;
-  }
   if(pinBuffer.length>=6)return;
-  pinBuffer+=String(d);updatePinDots();
-  // Mostra bottone conferma dopo 4+ cifre invece di auto-verificare
-  const confirmBtn=document.getElementById('confirm-login-pin-btn');
-  if(confirmBtn)confirmBtn.style.display=pinBuffer.length>=4?'block':'none';
+  pinBuffer+=String(d);
+  updatePinDots();
+  // Aggiorna bottone
+  const btn=document.getElementById('confirm-login-pin-btn');
+  if(btn){
+    if(pinBuffer.length>=4){
+      btn.style.display='block';
+      btn.textContent=window._settingPinMode?'Conferma PIN →':'Entra →';
+      btn.onclick=window._settingPinMode?confirmSetPin:checkPin;
+    } else {
+      btn.style.display='none';
+    }
+  }
+  // Auto-conferma a 6 cifre
+  if(pinBuffer.length===6){
+    if(window._settingPinMode) confirmSetPin();
+    else checkPin();
+  }
 };
 
 window.resetPinForDevice=function(){
@@ -1720,11 +1725,11 @@ window.resetPinForDevice=function(){
   if(p)showSetPinForDevice(p);
 };
 window.confirmSetPin=async function(){
-  if(_setPinBuffer.length<4){document.getElementById('lock-error').textContent='Il PIN deve avere almeno 4 cifre';return;}
-  await savePinHash(selectedProfileId,_setPinBuffer);
+  if(pinBuffer.length<4){document.getElementById('lock-error').textContent='Il PIN deve avere almeno 4 cifre';return;}
+  await savePinHash(selectedProfileId,pinBuffer);
   window._settingPinMode=false;
-  _setPinBuffer='';
-  document.getElementById('confirm-set-pin-btn').style.display='none';
+  pinBuffer='';
+  document.getElementById('confirm-login-pin-btn').style.display='none';
   toast('PIN impostato ✓');
   selectProfile(selectedProfileId);
 };
