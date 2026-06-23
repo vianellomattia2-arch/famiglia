@@ -2471,35 +2471,25 @@ function renderDashboard(){
   if(hs)hs.textContent=`🏦 €${fmt(totaleConti)} · 💵 €${fmt(totaleContanti)} · 🎟️ €${fmt(totaleBuoni)}`;
   const he=document.getElementById('dash-hero-entrate');if(he)he.textContent=`+€${fmt(entrate)}`;
   const hu=document.getElementById('dash-hero-uscite');if(hu)hu.textContent=`-€${fmt(uscite)}`;
-  // A FINE MESE = saldo attuale + entrate ricorrenti future nel mese - uscite ricorrenti future nel mese
+  // A FINE MESE = saldo attuale + ricorrenti future rimaste nel mese
   const oggi=new Date();
-  const fineM=new Date(oggi.getFullYear(),oggi.getMonth()+1,0); // ultimo giorno del mese
+  const annoCorrente=oggi.getFullYear(),meseCorrente=oggi.getMonth();
+  const ultimoGiorno=new Date(annoCorrente,meseCorrente+1,0).getDate();
   let entrateFuture=0,usciteFuture=0;
-  state.ricorrenti.forEach(r=>{
-    if(r.fine&&r.fine<today())return;
-    if(!r.inizio)return;
-    const ini=new Date(r.inizio+'T12:00:00');
-    // Trova le date nel resto del mese
-    let d=new Date(oggi.getFullYear(),oggi.getMonth(),oggi.getDate()+1);
-    while(d<=fineM){
-      let match=false;
-      if(r.frequenza==='mensile') match=d.getDate()===ini.getDate();
-      else if(r.frequenza==='settimanale'){const diff=Math.round((d-ini)/864e5);match=diff>=0&&diff%7===0;}
-      else if(r.frequenza==='bimestrale'){const mD=(d.getFullYear()-ini.getFullYear())*12+(d.getMonth()-ini.getMonth());match=d.getDate()===ini.getDate()&&mD%2===0;}
-      else if(r.frequenza==='trimestrale'){const mD=(d.getFullYear()-ini.getFullYear())*12+(d.getMonth()-ini.getMonth());match=d.getDate()===ini.getDate()&&mD%3===0;}
-      else if(r.frequenza==='semestrale'){const mD=(d.getFullYear()-ini.getFullYear())*12+(d.getMonth()-ini.getMonth());match=d.getDate()===ini.getDate()&&mD%6===0;}
-      else if(r.frequenza==='annuale') match=d.getDate()===ini.getDate()&&d.getMonth()===ini.getMonth();
-      if(match){
+  for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
+    const dateStr=`${annoCorrente}-${String(meseCorrente+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    state.ricorrenti.forEach(r=>{
+      if(!r.inizio)return;
+      if(shouldInsert(r,dateStr)){
         if(r.tipo==='entrata') entrateFuture+=r.importo||0;
         else usciteFuture+=r.importo||0;
       }
-      d.setDate(d.getDate()+1);
-    }
-  });
+    });
+  }
   const sFine=sOra+entrateFuture-usciteFuture;
   const hf=document.getElementById('dash-hero-fine');
   if(hf){
-    hf.textContent=`€${fmt(Math.abs(sFine))}${sFine<0?' (negativo)':''}`;
+    hf.textContent=`€${fmt(Math.abs(sFine))}${sFine<0?' ⚠️':''}`;
     hf.style.color=sFine>=0?'rgba(255,255,255,.9)':'#ffb3bb';
   }
 
