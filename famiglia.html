@@ -490,6 +490,7 @@
       <button id="confirm-set-pin-btn" onclick="confirmSetPin()" style="display:none;width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Conferma PIN →</button>
       <!-- Bottone login normale dopo 4+ cifre -->
       <button id="confirm-login-pin-btn" onclick="checkPin()" style="display:none;width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Entra →</button>
+      <button onclick="resetPinForDevice()" style="background:none;border:none;color:rgba(255,255,255,.2);font-size:11px;cursor:pointer;margin-top:4px;font-family:var(--font-sans);text-decoration:underline">Reimposta PIN su questo dispositivo</button>
     </div>
 
     <!-- STEP 3: benvenuto -->
@@ -1711,7 +1712,13 @@ window.addPin=function(d){
   if(confirmBtn)confirmBtn.style.display=pinBuffer.length>=4?'block':'none';
 };
 
-window.confirmSetPin=async function(){
+window.resetPinForDevice=function(){
+  if(!selectedProfileId)return;
+  if(!confirm('Reimpostare il PIN per questo dispositivo?'))return;
+  localStorage.removeItem('cn_pin_'+selectedProfileId);
+  const p=getProfiles().find(x=>x.id===selectedProfileId);
+  if(p)showSetPinForDevice(p);
+};
   if(_setPinBuffer.length<4){document.getElementById('lock-error').textContent='Il PIN deve avere almeno 4 cifre';return;}
   await savePinHash(selectedProfileId,_setPinBuffer);
   window._settingPinMode=false;
