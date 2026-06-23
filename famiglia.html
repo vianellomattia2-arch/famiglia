@@ -1651,7 +1651,11 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='Escape'){backToProfiles();}
   else if(e.key==='Delete'){clearPin();}
 });
-function updatePinDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
+function updatePinDots(){
+  const display=document.getElementById('pin-display');
+  if(!display)return;
+  display.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));
+}
 
 async function checkPin(){
   const profiles=getProfiles();const p=profiles.find(x=>x.id===selectedProfileId);
@@ -3940,6 +3944,16 @@ window.deleteProfile=function(id){
   if(profiles.length===0){toast('Deve esserci almeno un profilo','err');return;}
   saveProfiles(profiles);renderSettingsProfiles();toast('Profilo eliminato');
 };
+window.transferAdmin=function(newAdminId){
+  if(!confirm('Rendere questo profilo Admin? Il profilo attuale perderà il ruolo Admin.'))return;
+  const profiles=getProfiles().map(p=>({
+    ...p,
+    ruolo: p.id===newAdminId ? 'admin' : (p.ruolo==='admin' ? 'adulto' : p.ruolo)
+  }));
+  saveProfiles(profiles);
+  renderSettingsProfiles();
+  toast('Ruolo Admin trasferito ✓');
+};
 // ===== ACCESSI LOG =====
 async function renderAccessiLog(){
   const el=document.getElementById('accessi-list');if(!el)return;
@@ -4004,7 +4018,10 @@ function renderSettingsProfiles(){
       </div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <button class="btn btn-ghost btn-sm" onclick="openProfileModal('${p.id}')">✏️ Modifica</button>
-        ${p.ruolo!=='admin'?`<button class="btn-danger" onclick="deleteProfile('${p.id}')" style="font-size:12px;text-align:center">✕ Elimina</button>`:''}
+        ${p.ruolo!=='admin'?`
+          <button class="btn-danger" onclick="deleteProfile('${p.id}')" style="font-size:12px;text-align:center">✕ Elimina</button>
+          <button class="btn btn-ghost btn-sm" onclick="transferAdmin('${p.id}')" style="font-size:11px;color:var(--gold);border-color:var(--gold)">⭐ Rendi Admin</button>
+        `:''}
       </div>
     </div>`).join('');
   const addBtn=document.getElementById('add-profile-btn-wrap');
