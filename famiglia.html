@@ -6,6 +6,8 @@
   ║  Ideata, progettata e sviluppata da MATTIA VIANELLO         ║
   ║  © 2026 Mattia Vianello. Tutti i diritti riservati.        ║
   ║                                                              ║
+  ║  v12 — Firebase Anonymous Auth + Firestore Security Rules   ║
+  ║                                                              ║
   ║  Questo software è proprietà intellettuale di Mattia        ║
   ║  Vianello. È vietata la riproduzione, distribuzione o       ║
   ║  modifica senza esplicita autorizzazione scritta.           ║
@@ -1267,10 +1269,26 @@
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
 import{getFirestore,doc,setDoc,onSnapshot,collection,addDoc,deleteDoc,updateDoc,serverTimestamp}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import{getAuth,signInAnonymously,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import{getMessaging,getToken,onMessage}from"https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging.js";
 const firebaseConfig={apiKey:"AIzaSyBIULZU-xPRvWIeM4Gv0igKotbEX2DzRnc",authDomain:"app-family-ff2ff.firebaseapp.com",projectId:"app-family-ff2ff",storageBucket:"app-family-ff2ff.firebasestorage.app",messagingSenderId:"451030699741",appId:"1:451030699741:web:0996d1f452cd2d992bd534"};
 const app=initializeApp(firebaseConfig);
 const db=getFirestore(app);
+const auth=getAuth(app);
+
+// ===== ANONYMOUS AUTH =====
+// Garantisce un uid anonimo persistente per ogni dispositivo.
+// Le Firestore Security Rules richiedono request.auth != null.
+let _authReady=false;
+const _authReadyPromise=new Promise(resolve=>{
+  onAuthStateChanged(auth,async user=>{
+    if(!user){
+      try{await signInAnonymously(auth);}
+      catch(e){console.warn('Auth anonima fallita:',e);}
+    }
+    if(!_authReady){_authReady=true;resolve();}
+  });
+});
 
 // ===== FCM NOTIFICHE =====
 // IMPORTANTE: sostituisci VAPID_KEY_QUI con la chiave da Firebase Console → Impostazioni → Cloud Messaging → Web Push certificates
@@ -1642,7 +1660,10 @@ async function checkPin(){
     document.getElementById('lock-error').textContent='PIN errato, riprova';
     pinBuffer='';updatePinDots();return;
   }
-  // PIN corretto — salva sessione
+  // PIN corretto — attendi auth Firebase prima di procedere
+  await _authReadyPromise;
+
+  // Salva sessione
   isChildMode=p.ruolo==='figlio';
   sessionStorage.setItem('cn_unlocked','1');
   sessionStorage.setItem('cn_mode',p.ruolo);
