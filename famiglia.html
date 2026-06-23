@@ -142,8 +142,20 @@
   .day-event-block .ev-sub{font-size:11px;opacity:.7;margin-top:2px;}
   .day-hour{display:flex;align-items:flex-start;gap:8px;min-height:40px;border-bottom:1px solid var(--border);padding:4px 0;}
   .day-hour-label{font-size:10px;color:var(--muted);font-family:var(--font-mono);min-width:36px;padding-top:2px;}
+  /* TAB BAR */
+  #tab-bar{display:none;align-items:center;gap:2px;padding:6px 10px 0;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  #tab-bar::-webkit-scrollbar{display:none;}
+  #tab-bar.visible{display:flex;}
+  .app-tab{display:flex;align-items:center;gap:5px;padding:6px 12px;background:var(--surface2);border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--muted);transition:all .15s;flex-shrink:0;position:relative;top:1px;max-width:140px;}
+  .app-tab.active{background:var(--bg);border-color:var(--border);color:var(--text);font-weight:600;}
+  .app-tab.active::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--accent);}
+  .app-tab .tab-icon{font-size:13px;}
+  .app-tab .tab-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .app-tab .tab-close{font-size:13px;color:var(--muted);margin-left:2px;opacity:.5;background:none;border:none;cursor:pointer;padding:0 2px;border-radius:3px;line-height:1;}
+  .app-tab .tab-close:hover{opacity:1;color:var(--red);}
+
   /* DASHBOARD MODERNA */
-  .dash-hero{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:20px;padding:28px 24px;margin-bottom:14px;position:relative;overflow:hidden;color:#fff;}
+  .dash-hero{background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:20px;padding:28px 24px;margin-bottom:14px;position:relative;overflow:hidden;color:#fff;cursor:pointer;}
   .dash-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.07);}
   .dash-hero::after{content:'';position:absolute;bottom:-60px;left:-20px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.05);}
   .dash-hero-label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;opacity:.7;margin-bottom:8px;}
@@ -519,6 +531,9 @@
     </div>
   </div>
 </header>
+
+<!-- TAB BAR -->
+<div id="tab-bar"></div>
 
 <!-- NAV orizzontale nascosto (mantenuto per compatibilità child-nav) -->
 <nav id="main-nav" style="display:none">
@@ -1500,6 +1515,16 @@ window.addPin=function(d){
 };
 window.backPin=function(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('lock-error').textContent='';};
 window.clearPin=function(){pinBuffer='';updatePinDots();document.getElementById('lock-error').textContent='';};
+
+// Tastiera fisica per il PIN
+document.addEventListener('keydown',function(e){
+  const pinStep=document.getElementById('lock-step-pin');
+  if(!pinStep||pinStep.style.display==='none')return;
+  if(e.key>='0'&&e.key<='9'){addPin(parseInt(e.key));}
+  else if(e.key==='Backspace'){backPin();}
+  else if(e.key==='Escape'){backToProfiles();}
+  else if(e.key==='Delete'){clearPin();}
+});
 function updatePinDots(){document.querySelectorAll('.pin-dot').forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));}
 
 async function checkPin(){
@@ -1546,6 +1571,7 @@ async function checkPin(){
       const fab=document.getElementById('fab-add');if(fab)fab.classList.remove('hidden');
       // Ricarica tema/font/layout specifici del profilo ora che il profile ID è disponibile
       loadTheme();loadFont();loadLayout();
+      initTabs();
       listenTransactions();listenShared();
       initNotifiche();
     }
@@ -1721,6 +1747,7 @@ function startApp(){
       document.getElementById('main-nav').style.display='';
       document.getElementById('child-nav').style.display='none';
       loadTheme();loadFont();loadLayout();
+      initTabs();
       listenTransactions();listenShared();
       initNotifiche();
     }
@@ -1734,6 +1761,94 @@ if(document.readyState==='loading'){
 }else{
   init();
 }
+
+// ===== TAB BAR =====
+const TAB_PAGES={
+  'dashboard':{icon:'📊',label:'Dashboard'},
+  'entrate':  {icon:'💰',label:'Transazioni'},
+  'agenda':   {icon:'📅',label:'Agenda'},
+  'note':     {icon:'📝',label:'Note'},
+  'liste':    {icon:'✅',label:'Liste'},
+};
+let openTabs=[]; // array di page id
+let activeTab='dashboard';
+
+function initTabs(){
+  openTabs=['dashboard'];
+  activeTab='dashboard';
+  renderTabBar();
+}
+
+function renderTabBar(){
+  const bar=document.getElementById('tab-bar');if(!bar)return;
+  if(openTabs.length<=1){bar.classList.remove('visible');return;}
+  bar.classList.add('visible');
+  bar.innerHTML=openTabs.map(page=>{
+    const t=TAB_PAGES[page]||{icon:'📄',label:page};
+    const isActive=page===activeTab;
+    return`<div class="app-tab ${isActive?'active':''}" onclick="switchTab('${page}')">
+      <span class="tab-icon">${t.icon}</span>
+      <span class="tab-label">${t.label}</span>
+      <button class="tab-close" onclick="event.stopPropagation();closeTab('${page}')" title="Chiudi">✕</button>
+    </div>`;
+  }).join('');
+}
+
+window.openInTab=function(page){
+  if(!TAB_PAGES[page]){
+    // Se non è una pagina tab, naviga normalmente
+    sidebarNav(page,document.querySelector(`[data-page="${page}"]`));
+    return;
+  }
+  if(!openTabs.includes(page))openTabs.push(page);
+  switchTab(page);
+};
+
+window.switchTab=function(page){
+  activeTab=page;
+  renderTabBar();
+  // Aggiorna sidebar active
+  document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+  const sidebarBtn=document.querySelector(`[data-page="${page}"]`);
+  if(sidebarBtn)sidebarBtn.classList.add('active');
+  showPage(page,null);
+  const fab=document.getElementById('fab-add');
+  if(fab)fab.classList.toggle('hidden',!['dashboard','entrate','storico'].includes(page));
+};
+
+window.closeTab=function(page){
+  const idx=openTabs.indexOf(page);
+  if(idx===-1)return;
+  openTabs.splice(idx,1);
+  if(openTabs.length===0)openTabs=['dashboard'];
+  // Se era la tab attiva, passa alla precedente o alla prima
+  if(activeTab===page){
+    activeTab=openTabs[Math.max(0,idx-1)];
+    switchTab(activeTab);
+  }else{
+    renderTabBar();
+  }
+};
+
+// Aggiorna sidebarNav per aprire in tab se è una pagina tab
+const _origSidebarNav=window.sidebarNav;
+window.sidebarNav=function(page,btn){
+  if(TAB_PAGES[page]){
+    // Apri in tab
+    if(!openTabs.includes(page))openTabs.push(page);
+    activeTab=page;
+    renderTabBar();
+    document.querySelectorAll('.sidebar-item').forEach(b=>b.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    autoOpenGroup(page);
+    closeSidebar();
+    showPage(page,null);
+    const fab=document.getElementById('fab-add');
+    if(fab)fab.classList.toggle('hidden',!['dashboard','entrate','storico'].includes(page));
+  }else{
+    _origSidebarNav(page,btn);
+  }
+};
 
 // ===== SIDEBAR GROUPS =====
 const GROUP_PAGES={
@@ -1948,7 +2063,7 @@ window.saveSpesaContanti=async function(){
 };
 
 // ===== DRILL-DOWN TRANSAZIONI =====
-window.drillDown=function(tipo,filtro,label){
+window.drillDown=function(tipo,filtro,label,soloOggi=false){
   // Caso speciale: drill dalle ricorrenti → mostra le voci ricorrenti, non le transazioni
   if(tipo==='ricorrente_cat'){
     const voci=state.ricorrenti.filter(r=>r.categoria===filtro&&(!r.fine||r.fine>=monthKey()+'-01'));
@@ -1980,22 +2095,28 @@ window.drillDown=function(tipo,filtro,label){
   }
   // Caso normale: mostra transazioni del mese
   const txs=state.transactions;
+  const td=today();
   let filtered;
-  if(tipo==='categoria') filtered=txs.filter(t=>t.categoria===filtro);
-  else if(tipo==='tipo_entrata') filtered=txs.filter(t=>t.tipo==='entrata');
-  else if(tipo==='tipo_uscita') filtered=txs.filter(t=>t.tipo==='uscita');
-  else if(tipo==='metodo') filtered=txs.filter(t=>t.metodo===filtro&&t.tipo==='uscita');
-  else filtered=txs;
+  if(tipo==='fino_a_oggi') filtered=txs.filter(t=>t.data<=td);
+  else if(tipo==='categoria') filtered=txs.filter(t=>t.categoria===filtro&&t.data<=td);
+  else if(tipo==='tipo_entrata') filtered=txs.filter(t=>t.tipo==='entrata'&&t.data<=td);
+  else if(tipo==='tipo_uscita') filtered=txs.filter(t=>t.tipo==='uscita'&&t.data<=td);
+  else if(tipo==='metodo') filtered=txs.filter(t=>t.metodo===filtro&&t.tipo==='uscita'&&t.data<=td);
+  else filtered=txs.filter(t=>t.data<=td);
   filtered=[...filtered].sort((a,b)=>new Date(b.data)-new Date(a.data));
   const entrateSum=filtered.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const usciteSum=filtered.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   document.getElementById('drilldown-title').textContent=label;
+  const td2=today();
+  const isOggi=tipo==='fino_a_oggi'||tipo==='tipo_entrata'||tipo==='tipo_uscita';
   document.getElementById('drilldown-summary').innerHTML=`
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
       ${entrateSum>0?`<div style="background:rgba(79,216,158,.1);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--green)">+€${fmt(entrateSum)}</div>`:''}
       ${usciteSum>0?`<div style="background:rgba(255,107,122,.1);border:1px solid var(--red);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--red)">-€${fmt(usciteSum)}</div>`:''}
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${filtered.length} transazioni questo mese</div>
-    </div>`;
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${filtered.length} transazioni</div>
+    </div>
+    ${isOggi?`<div style="font-size:12px;color:var(--muted);padding:2px 0">📅 Transazioni fino al ${formatDate(td2)} — escluse quelle future</div>`:''}`;
+
   const ul=document.getElementById('drilldown-list');
   ul.innerHTML=filtered.length?filtered.map(t=>txHtml(t,false)).join(''):'<div class="empty" style="padding:20px">Nessuna transazione questo mese</div>';
   document.getElementById('drilldown-modal').classList.add('open');
@@ -2060,7 +2181,11 @@ function renderDashboard(){
   if(hf){hf.textContent=`€${fmt(sFine)}`;hf.style.color=sFine>=0?'rgba(255,255,255,.9)':'#ffb3bb';}
 
   // Hero clickable
-  document.getElementById('dash-hero-amount')?.closest('.dash-hero')?.setAttribute('onclick',"drillDown('tipo_uscita','','Tutte le transazioni')");
+  const heroClickEl=document.getElementById('dash-hero-amount')?.closest('.dash-hero');
+  if(heroClickEl){
+    heroClickEl.style.cursor='pointer';
+    heroClickEl.onclick=()=>drillDown('fino_a_oggi','','💰 Saldo ad oggi');
+  }
 
   // MINI CARDS
   const p=calcolaPortafoglio();
@@ -2168,8 +2293,8 @@ function renderDashboardClassica(){
   }
   sg.style.display='grid';
   sg.innerHTML=`
-    <div class="summary-card" onclick="drillDown('tipo_entrata','','Entrate')" style="cursor:pointer"><div class="label">Saldo ad oggi</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">entrate − uscite oggi</div></div>
-    <div class="summary-card" onclick="drillDown('tipo_uscita','','Uscite')" style="cursor:pointer"><div class="label">Saldo a fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
+    <div class="summary-card" onclick="drillDown('fino_a_oggi','','💰 Transazioni fino ad oggi')" style="cursor:pointer"><div class="label">Saldo ad oggi</div><div class="amount ${sOra>=0?'green':'red'}">€${fmt(sOra)}</div><div class="sub">entrate − uscite oggi</div></div>
+    <div class="summary-card" onclick="drillDown('tipo_uscita','','Tutte le uscite')" style="cursor:pointer"><div class="label">Saldo a fine mese</div><div class="amount ${sFine>=0?'green':'red'}">€${fmt(sFine)}</div><div class="sub">incluse spese programmate</div></div>
     <div class="summary-card" onclick="drillDown('tipo_entrata','','Entrate')" style="cursor:pointer"><div class="label">Entrate ad oggi</div><div class="amount green">€${fmt(entrate)}</div></div>
     <div class="summary-card" onclick="drillDown('tipo_uscita','','Uscite')" style="cursor:pointer"><div class="label">Uscite ad oggi</div><div class="amount red">€${fmt(uscite)}</div></div>`;
   // Carta
