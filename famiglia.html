@@ -1719,6 +1719,7 @@ window.resetPinForDevice=function(){
   const p=getProfiles().find(x=>x.id===selectedProfileId);
   if(p)showSetPinForDevice(p);
 };
+window.confirmSetPin=async function(){
   if(_setPinBuffer.length<4){document.getElementById('lock-error').textContent='Il PIN deve avere almeno 4 cifre';return;}
   await savePinHash(selectedProfileId,_setPinBuffer);
   window._settingPinMode=false;
