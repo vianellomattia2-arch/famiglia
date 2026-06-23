@@ -488,6 +488,8 @@
       </div>
       <!-- Bottone visibile solo in modalità impostazione PIN (primo accesso dispositivo) -->
       <button id="confirm-set-pin-btn" onclick="confirmSetPin()" style="display:none;width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Conferma PIN →</button>
+      <!-- Bottone login normale dopo 4+ cifre -->
+      <button id="confirm-login-pin-btn" onclick="checkPin()" style="display:none;width:100%;background:linear-gradient(135deg,var(--accent),var(--purple));border:none;border-radius:14px;padding:14px;color:#fff;font-size:15px;font-weight:600;cursor:pointer;font-family:var(--font-sans)">Entra →</button>
     </div>
 
     <!-- STEP 3: benvenuto -->
@@ -1673,6 +1675,7 @@ window.backToProfiles=function(){
   pinBuffer='';_setPinBuffer='';
   window._settingPinMode=false;
   document.getElementById('confirm-set-pin-btn').style.display='none';
+  document.getElementById('confirm-login-pin-btn').style.display='none';
   document.getElementById('lock-step-pin').style.display='none';
   document.getElementById('lock-step-profiles').style.display='block';
   document.getElementById('lock-error').textContent='';
@@ -1703,7 +1706,9 @@ window.addPin=function(d){
   }
   if(pinBuffer.length>=6)return;
   pinBuffer+=String(d);updatePinDots();
-  if(pinBuffer.length>=4)setTimeout(()=>{if(pinBuffer.length>=4)checkPin();},300);
+  // Mostra bottone conferma dopo 4+ cifre invece di auto-verificare
+  const confirmBtn=document.getElementById('confirm-login-pin-btn');
+  if(confirmBtn)confirmBtn.style.display=pinBuffer.length>=4?'block':'none';
 };
 
 window.confirmSetPin=async function(){
@@ -1715,8 +1720,18 @@ window.confirmSetPin=async function(){
   toast('PIN impostato ✓');
   selectProfile(selectedProfileId);
 };
-window.backPin=function(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('lock-error').textContent='';};
-window.clearPin=function(){pinBuffer='';updatePinDots();document.getElementById('lock-error').textContent='';};
+window.backPin=function(){
+  pinBuffer=pinBuffer.slice(0,-1);updatePinDots();
+  document.getElementById('lock-error').textContent='';
+  const confirmBtn=document.getElementById('confirm-login-pin-btn');
+  if(confirmBtn)confirmBtn.style.display=pinBuffer.length>=4?'block':'none';
+};
+window.clearPin=function(){
+  pinBuffer='';updatePinDots();
+  document.getElementById('lock-error').textContent='';
+  const confirmBtn=document.getElementById('confirm-login-pin-btn');
+  if(confirmBtn)confirmBtn.style.display='none';
+};
 
 // Tastiera fisica per il PIN
 document.addEventListener('keydown',function(e){
