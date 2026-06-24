@@ -1501,6 +1501,11 @@ const CATEGORIES={
     {id:'svago',label:'Uscite / Svago',icon:'🎭',color:'#b48fff',group:'Svago'},{id:'vacanze',label:'Vacanze / Viaggi',icon:'✈️',color:'#6c9fff',group:'Svago'},{id:'sport_prat',label:'Sport praticato',icon:'⚽',color:'#4fd89e',group:'Svago'},{id:'libri',label:'Libri / Cultura',icon:'📚',color:'#b48fff',group:'Svago'},
     {id:'abbigliamento',label:'Abbigliamento',icon:'👗',color:'#ff9f6b',group:'Shopping'},{id:'elettronica',label:'Elettronica',icon:'📱',color:'#6c9fff',group:'Shopping'},{id:'casa_arredi',label:'Casa / Arredi',icon:'🛋️',color:'#c8a070',group:'Shopping'},
     {id:'istruzione',label:'Istruzione / Corsi',icon:'🎓',color:'#f5c842',group:'Altro'},{id:'animali',label:'Animali domestici',icon:'🐾',color:'#ffb347',group:'Altro'},{id:'regalo',label:'Regalo',icon:'🎁',color:'#b48fff',group:'Altro'},{id:'altro',label:'Altro',icon:'📦',color:'#7a7f94',group:'Altro'},
+    {id:'ecommerce',label:'Spesa E-Commerce',icon:'📦',color:'#ff9f6b',group:'Shopping'},
+    {id:'estetica',label:'Estetica',icon:'💅',color:'#ff9fd4',group:'Personale'},
+    {id:'mensa_chiara',label:'Mensa Chiara',icon:'🍱',color:'#4fd89e',group:'Figli'},
+    {id:'scuola_fede',label:'Spese Scolastiche Fede',icon:'📐',color:'#6c9fff',group:'Figli'},
+    {id:'scuola_chiara',label:'Spese Scolastiche Chiara',icon:'📏',color:'#b48fff',group:'Figli'},
     {id:'prelievo',label:'Prelievo bancomat',icon:'🏧',color:'#f5c842',group:'Portafoglio'}
   ],
   entrata:[
@@ -2656,13 +2661,37 @@ function renderDashboard(){
 // ===== DASHBOARD CLASSICA =====
 function renderDashboardClassica(){
   const txs=state.transactions,td=today();
-  const mkStart=monthKey()+'-01';
-  const txThisMonth=txs.filter(t=>t.data>=mkStart&&t.data<=td);
+  const mk=monthKey();
+  const mkStart=mk+'-01';
+  const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
   const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0); // include prelievi: scalano dal conto
-  const sOra=entrate-uscite,sFine=eAll-uAll;
+  // Saldo ad oggi = patrimonio reale (conti + contanti + buoni)
+  const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
+  const portafoglio=calcolaPortafoglio();
+  const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
+  const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
+  const totaleBuoni=Math.max(0,tuttiBuoni)*7;
+  const sOra=totaleConti+totaleContanti+totaleBuoni;
+  // Saldo a fine mese = sOra + ricorrenti future non ancora inserite
+  const oggi=new Date();
+  const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
+  const txInserite=new Set(txs.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
+  const txPerDataImporto=new Set(txs.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
+  let entrateFuture=0,usciteFuture=0;
+  for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
+    const dateStr=`${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    (state.ricorrenti||[]).forEach(r=>{
+      if(!r.inizio)return;
+      if(txInserite.has(`${r.id}_${dateStr}`))return;
+      if(txPerDataImporto.has(`${dateStr}_${r.importo}_${r.categoria}`))return;
+      if(shouldInsert(r,dateStr)){
+        if(r.tipo==='entrata') entrateFuture+=r.importo||0;
+        else usciteFuture+=r.importo||0;
+      }
+    });
+  }
+  const sFine=sOra+entrateFuture-usciteFuture;
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
   // Nascondi elementi moderni
@@ -2686,7 +2715,7 @@ function renderDashboardClassica(){
   if(!cw){cw=document.createElement('div');cw.id='carta-classic-wrap';sg.after(cw);}
   if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid" style="margin-bottom:10px"><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div></div><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Disponibile</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div></div></div>`;}else cw.innerHTML='';
   renderPortafoglio();renderReminders();checkAnomalieQuick();renderRicorrentiDash();
-  const bycat={};txs.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  const bycat={};txThisMonth.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;
   const bd=document.getElementById('cat-breakdown');
   if(bd){if(!sorted.length)bd.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Nessuna spesa</div>';
