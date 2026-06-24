@@ -2354,7 +2354,9 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
   if(tipo==='fine_mese'){
     const txs=state.transactions;
     const td=today();
-    const passate=[...txs].sort((a,b)=>new Date(b.data)-new Date(a.data));
+    const mk=monthKey(); // es. "2026-06"
+    // Solo transazioni del mese corrente — esclude quelle di mesi futuri inserite in anticipo
+    const passate=[...txs].filter(t=>t.data&&t.data.startsWith(mk)).sort((a,b)=>new Date(b.data)-new Date(a.data));
     // Calcola ricorrenti future rimaste nel mese
     const oggi=new Date();
     const anno=oggi.getFullYear(),mese=oggi.getMonth();
@@ -2600,8 +2602,10 @@ function renderDashboard(){
   renderReminders();
   checkAnomalieQuick();
 
-  // CATEGORIE — pillole cliccabili + barre
-  const bycat={};txs.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  // CATEGORIE — pillole cliccabili + barre (solo mese visualizzato)
+  const mk=monthKey();
+  const txsMese=txs.filter(t=>t.data&&t.data.startsWith(mk));
+  const bycat={};txsMese.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   const max=sorted[0]?.[1]||1;
   // Pillole rapide
