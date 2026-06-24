@@ -2362,11 +2362,13 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
     const oggi=new Date();
     const anno=oggi.getFullYear(),mese=oggi.getMonth();
     const ultimoG=new Date(anno,mese+1,0).getDate();
+    const txInserite=new Set(state.transactions.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
     const future=[];
     for(let g=oggi.getDate()+1;g<=ultimoG;g++){
       const dateStr=`${anno}-${String(mese+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
       state.ricorrenti.forEach(r=>{
         if(!r.inizio)return;
+        if(txInserite.has(`${r.id}_${dateStr}`))return;
         if(shouldInsert(r,dateStr)){
           future.push({...r,data:dateStr,_futura:true});
         }
@@ -2526,14 +2528,18 @@ function renderDashboard(){
   const he=document.getElementById('dash-hero-entrate');if(he)he.textContent=`+€${fmt(entrate)}`;
   const hu=document.getElementById('dash-hero-uscite');if(hu)hu.textContent=`-€${fmt(uscite)}`;
   // A FINE MESE = saldo attuale + ricorrenti future rimaste nel mese
+  // Escludi ricorrenti già inserite come transazioni reali
   const oggi=new Date();
   const annoCorrente=oggi.getFullYear(),meseCorrente=oggi.getMonth();
   const ultimoGiorno=new Date(annoCorrente,meseCorrente+1,0).getDate();
+  // Indice transazioni già inserite per ricorrenteId+data
+  const txInserite=new Set(state.transactions.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
   let entrateFuture=0,usciteFuture=0;
   for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
     const dateStr=`${annoCorrente}-${String(meseCorrente+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     (state.ricorrenti||[]).forEach(r=>{
       if(!r.inizio)return;
+      if(txInserite.has(`${r.id}_${dateStr}`))return; // già inserita, salta
       if(shouldInsert(r,dateStr)){
         if(r.tipo==='entrata') entrateFuture+=r.importo||0;
         else usciteFuture+=r.importo||0;
