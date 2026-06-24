@@ -1840,7 +1840,7 @@ function listenShared(){
     state.ricorrenti=snap.exists()?(snap.data().list||[]):[];
     renderRicorrentiDash();
     checkRicorrenti();
-    renderDashboard(); // aggiorna "a fine mese" con le ricorrenti aggiornate
+    renderDashboard();
     const active=document.querySelector('.page.active')?.id;
     if(active==='page-ricorrenti')renderPage('ricorrenti');
     if(active==='page-agenda')renderPage('agenda');
@@ -1848,6 +1848,8 @@ function listenShared(){
   onSnapshot(doc(db,'shared','saldi'),snap=>{state.saldi=snap.exists()?(snap.data().list||[]):[];renderDashboard();renderPage('saldi');});
   onSnapshot(doc(db,'shared','birthdays'),snap=>{state.birthdays=snap.exists()?(snap.data().list||[]):[];renderPage('agenda');renderReminders();});
   onSnapshot(doc(db,'shared','buoni'),snap=>{state.buoni=snap.exists()?(snap.data().list||[]):[];renderDashboard();renderPage('buoni');});
+  // Re-render dashboard dopo 2s per assicurarsi che tutti i dati siano caricati
+  setTimeout(()=>renderDashboard(),2000);
   onSnapshot(doc(db,'shared','note'),snap=>{state.note=snap.exists()?(snap.data().list||[]):[];renderPage('note');});
   onSnapshot(collection(db,'note_private'),snap=>{state.notePrivate=snap.docs.map(d=>({id:d.id,...d.data()})).filter(n=>n.autore===sessionStorage.getItem('cn_profile_name'));renderPage('note');});
   onSnapshot(doc(db,'shared','portafoglio'),snap=>{state.portafoglio=snap.exists()?snap.data():{io:0,lei:0};renderPortafoglio();});
@@ -2369,24 +2371,21 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
       const dateStr=`${anno}-${String(mese+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
       state.ricorrenti.forEach(r=>{
         if(!r.inizio)return;
-        if(shouldInsert(r,dateStr)){
-          // Segna se già inserita (per non contarla nei totali, ma mostrarla ugualmente)
-          const giàInserita=txInserite.has(`${r.id}_${dateStr}`)||txPerDataImporto.has(`${dateStr}_${r.importo}_${r.categoria}`);
-          future.push({...r,data:dateStr,_futura:true,_giàInserita:giàInserita});
-        }
+        if(txInserite.has(`${r.id}_${dateStr}`))return;
+        if(txPerDataImporto.has(`${dateStr}_${r.importo}_${r.categoria}`))return;
+        if(shouldInsert(r,dateStr)) future.push({...r,data:dateStr});
       });
     }
     const entratePass=passate.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
     const uscitePass=passate.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-    const entrateFut=future.filter(r=>r.tipo==='entrata'&&!r._giàInserita).reduce((a,r)=>a+r.importo,0);
-    const usciteFut=future.filter(r=>r.tipo!=='entrata'&&!r._giàInserita).reduce((a,r)=>a+r.importo,0);
-    const futureNuove=future.filter(r=>!r._giàInserita).length;
+    const entrateFut=future.filter(r=>r.tipo==='entrata').reduce((a,r)=>a+r.importo,0);
+    const usciteFut=future.filter(r=>r.tipo!=='entrata').reduce((a,r)=>a+r.importo,0);
     document.getElementById('drilldown-title').textContent=label;
     document.getElementById('drilldown-summary').innerHTML=`
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         ${entratePass+entrateFut>0?`<div style="background:rgba(79,216,158,.1);border:1px solid var(--green);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--green)">+€${fmt(entratePass+entrateFut)}</div>`:''}
         ${uscitePass+usciteFut>0?`<div style="background:rgba(255,107,122,.1);border:1px solid var(--red);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--red)">-€${fmt(uscitePass+usciteFut)}</div>`:''}
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${passate.length} registrate + ${futureNuove} previste</div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${passate.length} registrate + ${future.length} previste</div>
       </div>
       <div style="font-size:12px;color:var(--muted);padding:2px 0">📅 Transazioni del mese incluse le ricorrenti previste fino al ${new Date(anno,mese+1,0).getDate()}/${String(mese+1).padStart(2,'0')}</div>`;
     const ul=document.getElementById('drilldown-list');
@@ -2394,14 +2393,12 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
       const cat=catById(r.categoria);
       const segno=r.tipo==='entrata'?'+':'-';
       const color=r.tipo==='entrata'?'var(--green)':'var(--red)';
-      const borderColor=r._giàInserita?'var(--muted)':'var(--gold)';
-      const badge=r._giàInserita?'🔁 già registrata':'🔁 prevista';
-      return`<li class="tx-item" style="opacity:${r._giàInserita?.5:.75};border-left:3px solid ${borderColor};padding-left:8px">
+      return`<li class="tx-item" style="opacity:.75;border-left:3px solid var(--gold);padding-left:8px">
         <div class="tx-left"><div class="tx-icon">${cat.icon}</div>
-          <div><div class="tx-desc">${r.desc||r.categoria} <span class="badge badge-auto">${badge}</span></div>
+          <div><div class="tx-desc">${r.desc||r.categoria} <span class="badge badge-auto">🔁 prevista</span></div>
           <div class="tx-meta">${formatDate(r.data)}</div></div>
         </div>
-        <div class="tx-right"><span class="tx-amount" style="color:${r._giàInserita?'var(--muted)':color}">${segno}€${fmt(r.importo)}</span></div>
+        <div class="tx-right"><span class="tx-amount" style="color:${color}">${segno}€${fmt(r.importo)}</span></div>
       </li>`;
     }).join('');
     const passateHtml=passate.length?passate.map(t=>txHtml(t,false)).join(''):'';
