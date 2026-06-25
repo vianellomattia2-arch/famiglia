@@ -2413,27 +2413,52 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
     return;
   }
   // Caso speciale: drill dalle ricorrenti → mostra le voci ricorrenti, non le transazioni
-  if(tipo==='ricorrente_cat'){
-    const voci=state.ricorrenti.filter(r=>r.categoria===filtro&&(!r.fine||r.fine>=monthKey()+'-01'));
+  if(tipo==='ricorrente_cat'||tipo==='ricorrenti_uscite'||tipo==='ricorrenti_entrate'){
     const FL={settimanale:'Ogni settimana',mensile:'Ogni mese',bimestrale:'Ogni 2 mesi',trimestrale:'Ogni 3 mesi',semestrale:'Ogni 6 mesi',annuale:'Ogni anno'};
     const freqMult={settimanale:4.33,mensile:1,bimestrale:0.5,trimestrale:0.33,semestrale:0.17,annuale:0.083};
+    const freqAnno={settimanale:52,mensile:12,bimestrale:6,trimestrale:4,semestrale:2,annuale:1};
+    const td=today();
+    let voci;
+    if(tipo==='ricorrente_cat') voci=state.ricorrenti.filter(r=>r.categoria===filtro&&(!r.fine||r.fine>=monthKey()+'-01'));
+    else if(tipo==='ricorrenti_uscite') voci=state.ricorrenti.filter(r=>r.tipo!=='entrata'&&(!r.fine||r.fine>=monthKey()+'-01'));
+    else voci=state.ricorrenti.filter(r=>r.tipo==='entrata'&&(!r.fine||r.fine>=monthKey()+'-01'));
     const totMese=voci.reduce((a,r)=>a+r.importo*(freqMult[r.frequenza]||1),0);
+    const colorTot=tipo==='ricorrenti_entrate'?'var(--green)':'var(--red)';
+    const bgTot=tipo==='ricorrenti_entrate'?'rgba(79,216,158,.1)':'rgba(255,107,122,.1)';
+    const borderTot=tipo==='ricorrenti_entrate'?'var(--green)':'var(--red)';
     document.getElementById('drilldown-title').textContent=label;
     document.getElementById('drilldown-summary').innerHTML=`
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-        <div style="background:rgba(255,107,122,.1);border:1px solid var(--red);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--red)">~€${fmt(totMese)}/mese</div>
+        <div style="background:${bgTot};border:1px solid ${borderTot};border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:${colorTot}">~€${fmt(totMese)}/mese</div>
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${voci.length} voci ricorrenti</div>
       </div>
       <div style="font-size:12px;color:var(--muted)">Queste sono le spese <strong>programmate</strong> — appaiono nelle transazioni il giorno in cui scadono.</div>`;
     const ul=document.getElementById('drilldown-list');
+    // Calcola costo label (in giallo) come nella sezione Ricorrenti
+    function cuboCosto(r){
+      if(r.tipo==='entrata')return null;
+      const fq=freqAnno[r.frequenza]||12;
+      if(!r.fine) return`${fmt(r.importo*fq)}€/anno`;
+      const dataFine=new Date(r.fine+'T12:00:00');
+      const dataInizio=new Date(Math.max(new Date((r.inizio||td)+'T12:00:00'),new Date()));
+      if(dataFine<=dataInizio)return null;
+      const diffMs=dataFine-dataInizio;
+      const diffDays=diffMs/(1000*60*60*24);
+      const nOccorrenze=Math.ceil(diffDays/(365/fq));
+      return`${fmt(nOccorrenze*r.importo)}€ totali (${nOccorrenze} rate)`;
+    }
     ul.innerHTML=voci.length?voci.map(r=>{
       const cat=catById(r.categoria);
       const segno=r.tipo==='entrata'?'+':'-';
       const color=r.tipo==='entrata'?'var(--green)':'var(--red)';
+      const cubo=cuboCosto(r);
       return`<li class="tx-item">
         <div class="tx-left"><div class="tx-icon">${cat.icon}</div>
-          <div><div class="tx-desc">${r.desc} <span class="badge badge-auto">🔁</span></div>
-          <div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)}${r.fine?' → '+formatDate(r.fine):''}</div></div>
+          <div>
+            <div class="tx-desc">${r.desc} <span class="badge badge-auto">🔁</span></div>
+            <div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)}${r.fine?' → '+formatDate(r.fine):''}</div>
+            ${cubo?`<div style="font-size:11px;color:var(--gold);margin-top:2px">💰 ${cubo}</div>`:''}
+          </div>
         </div>
         <div class="tx-right"><span class="tx-amount" style="color:${color}">${segno}€${fmt(r.importo)}</span></div>
       </li>`;
@@ -3268,11 +3293,11 @@ function renderRicorrentiDash(){
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   el.innerHTML=
     `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('tipo_uscita','','🔁 Tutte le uscite ricorrenti')" title="Clicca per vedere le transazioni">
+      <div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('ricorrenti_uscite','','🔁 Tutte le uscite ricorrenti')" title="Clicca per vedere le voci ricorrenti">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Uscite fisse/mese</div>
         <div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--red)">-€${fmt(totUscite)}</div>
       </div>
-      ${totEntrate>0?`<div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('tipo_entrata','','🔁 Tutte le entrate ricorrenti')" title="Clicca per vedere le transazioni"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Entrate fisse/mese</div><div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--green)">+€${fmt(totEntrate)}</div></div>`:''}
+      ${totEntrate>0?`<div style="flex:1;min-width:120px;cursor:pointer" onclick="drillDown('ricorrenti_entrate','','🔁 Tutte le entrate ricorrenti')" title="Clicca per vedere le voci ricorrenti"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Entrate fisse/mese</div><div style="font-family:var(--font-mono);font-size:22px;font-weight:500;color:var(--green)">+€${fmt(totEntrate)}</div></div>`:''}
       <div style="font-size:12px;color:var(--muted);align-self:center">${active.length} voci attive</div>
     </div>`+
     (sorted.length?sorted.map(([id,amt])=>{
