@@ -2423,6 +2423,7 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
     else if(tipo==='ricorrenti_uscite') voci=state.ricorrenti.filter(r=>r.tipo!=='entrata'&&(!r.fine||r.fine>=monthKey()+'-01'));
     else voci=state.ricorrenti.filter(r=>r.tipo==='entrata'&&(!r.fine||r.fine>=monthKey()+'-01'));
     const totMese=voci.reduce((a,r)=>a+r.importo*(freqMult[r.frequenza]||1),0);
+    const totAnno=voci.reduce((a,r)=>a+r.importo*(freqAnno[r.frequenza]||12),0);
     const colorTot=tipo==='ricorrenti_entrate'?'var(--green)':'var(--red)';
     const bgTot=tipo==='ricorrenti_entrate'?'rgba(79,216,158,.1)':'rgba(255,107,122,.1)';
     const borderTot=tipo==='ricorrenti_entrate'?'var(--green)':'var(--red)';
@@ -2430,6 +2431,7 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
     document.getElementById('drilldown-summary').innerHTML=`
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
         <div style="background:${bgTot};border:1px solid ${borderTot};border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:${colorTot}">~€${fmt(totMese)}/mese</div>
+        ${tipo==='ricorrente_cat'?`<div style="background:rgba(255,212,78,.08);border:1px solid var(--gold);border-radius:8px;padding:6px 12px;font-family:var(--font-mono);font-size:14px;color:var(--gold)">💰 €${fmt(totAnno)}/anno</div>`:''}
         <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)">${voci.length} voci ricorrenti</div>
       </div>
       <div style="font-size:12px;color:var(--muted)">Queste sono le spese <strong>programmate</strong> — appaiono nelle transazioni il giorno in cui scadono.</div>`;
