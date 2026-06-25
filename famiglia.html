@@ -2637,8 +2637,8 @@ function renderDashboard(){
   // RICORRENTI
   renderRicorrentiDash();
 
-  // ULTIME TRANSAZIONI — stile dashboard
-  const recent=[...txs].sort((a,b)=>new Date(b.data)-new Date(a.data)).slice(0,6);
+  // ULTIME TRANSAZIONI — solo fino ad oggi, niente future
+  const recent=[...txs].filter(t=>t.data<=today()).sort((a,b)=>new Date(b.data)-new Date(a.data)).slice(0,6);
   const rtEl=document.getElementById('recent-tx');
   if(rtEl){
     if(!recent.length)rtEl.innerHTML='<div class="empty" style="padding:20px"><div class="empty-icon">🧾</div>Nessuna transazione</div>';
@@ -3291,7 +3291,45 @@ function renderRicorrenti(){
   const el=document.getElementById('ricorrenti-list');
   if(!state.ricorrenti.length){el.innerHTML='<div class="card"><div class="empty"><div class="empty-icon">🔁</div>Nessuna voce ricorrente.<br>Aggiungile dal pulsante + in alto.</div></div>';return;}
   const FL={settimanale:'Ogni settimana',mensile:'Ogni mese',bimestrale:'Ogni 2 mesi',trimestrale:'Ogni 3 mesi',semestrale:'Ogni 6 mesi',annuale:'Ogni anno'};
+  const freqAnno={settimanale:52,mensile:12,bimestrale:6,trimestrale:4,semestrale:2,annuale:1};
   const td=today();
+  const fineAnno=`${new Date().getFullYear()}-12-31`;
+
+  function calcolaCostoLabel(r){
+    if(r.tipo==='entrata')return null;
+    const fq=freqAnno[r.frequenza]||12;
+    if(!r.fine){
+      // Nessuna scadenza — costo annuale pieno
+      return`${fmt(r.importo*fq)}€/anno`;
+    }
+    // Ha una scadenza
+    const fine=r.fine;
+    const inizio=r.inizio||td;
+    const dataFine=new Date(fine+'T12:00:00');
+    const dataInizio=new Date(Math.max(new Date(inizio+'T12:00:00'),new Date()));
+    if(dataFine<=dataInizio)return null; // già terminata
+    // Calcola quante occorrenze cadono da oggi alla scadenza
+    let count=0;
+    const d=new Date(dataInizio);
+    while(d<=dataFine){
+      if(shouldInsert(r,d.toISOString().slice(0,10)))count++;
+      d.setDate(d.getDate()+1);
+    }
+    const costoTotale=count*r.importo;
+    // Se sfora l'anno, cap a fine anno
+    if(fine>fineAnno){
+      let countAnno=0;
+      const dA=new Date(dataInizio);
+      const fA=new Date(fineAnno+'T12:00:00');
+      while(dA<=fA){
+        if(shouldInsert(r,dA.toISOString().slice(0,10)))countAnno++;
+        dA.setDate(dA.getDate()+1);
+      }
+      return`${fmt(countAnno*r.importo)}€ entro fine anno`;
+    }
+    return`${fmt(costoTotale)}€ fino al ${formatDate(fine)}`;
+  }
+
   el.innerHTML='<div class="card">'+state.ricorrenti.map(r=>{
     const cat=catById(r.categoria);
     const scaduta=r.fine&&r.fine<td;
@@ -3299,12 +3337,14 @@ function renderRicorrenti(){
     const isEntrata=r.tipo==='entrata';
     const segno=isEntrata?'+':'-';
     const colore=isEntrata?'var(--green)':'var(--red)';
+    const costoLabel=calcolaCostoLabel(r);
     return`<div class="ricorrente-item" style="${scaduta?'opacity:.5':''}">
       <div class="tx-left">
         <div class="tx-icon">${cat.icon}</div>
         <div>
           <div class="tx-desc">${r.desc}${isEntrata?' <span class="badge" style="background:rgba(79,216,158,.15);color:var(--green)">Entrata</span>':''}${scaduta?' <span class="badge" style="background:rgba(255,107,122,.15);color:var(--red)">Terminata</span>':''}</div>
           <div class="tx-meta">${FL[r.frequenza]||r.frequenza} · dal ${formatDate(r.inizio)} ${fineLbl}</div>
+          ${costoLabel?`<div class="tx-meta" style="color:var(--gold);margin-top:2px">💸 ${costoLabel}</div>`:''}
         </div>
       </div>
       <div class="tx-right">
