@@ -1016,6 +1016,7 @@
         <div class="setting-row">
           <div><div class="setting-label">Limite mensile carta (€)</div><div class="setting-sub">Disponibilità massima ogni mese</div></div>
           <input id="carta-limite" type="number" placeholder="1500" style="width:120px;font-size:13px;padding:6px 10px;" oninput="saveCartaLimite()">
+          <button class="btn btn-ghost btn-sm" onclick="saveCartaLimite(true)" style="margin-left:6px">Salva</button>
         </div>
       </div>
       <div class="card">
@@ -2191,8 +2192,7 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // prelievi (categoria='prelievo') - spese con contanti (metodo='contanti_io/lei')
-  // Compatibile con chi='1'/'2' e vecchi valori 'io'/'lei'/'entrambi'
+  // prelievi - spese contanti, compatibile con chi='1'/'io' e '2'/'lei'
   const txs=state.transactions;
   const isIo=t=>t.chi==='1'||t.chi==='io';
   const isLei=t=>t.chi==='2'||t.chi==='lei';
@@ -2511,13 +2511,12 @@ function renderDashboard(){
   const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
 
   // SALDO DISPONIBILE = Conti correnti + Portafogli contanti + Buoni pasto residui
-  // +/- le transazioni del mese corrente (entrate reali - uscite reali)
+  // +/- le transazioni del mese corrente
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  // Tutte le tx del mese fino ad oggi (non solo quelle filtrate)
   const allTxMese=txs.filter(t=>t.data>=mkStart&&t.data<=td);
   const entrateRealiMese=allTxMese.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
   const usciteRealiMese=allTxMese.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
@@ -3270,19 +3269,9 @@ function renderRicorrentiDash(){
   const entrate=active.filter(r=>r.tipo==='entrata');
   const totUscite=uscite.reduce((a,r)=>a+r.importo*(freqMultiplier[r.frequenza]||1),0);
   const totEntrate=entrate.reduce((a,r)=>a+r.importo*(freqMultiplier[r.frequenza]||1),0);
-  // Per categoria (solo uscite nelle barre) — escludi quanto già inserito come transazione reale
-  const mk=monthKey();
-  const txMese=state.transactions.filter(t=>t.data&&t.data.startsWith(mk)&&isSpesaReale(t)&&t.ricorrenteId);
-  const giàInserito={};
-  txMese.forEach(t=>{giàInserito[t.categoria]=(giàInserito[t.categoria]||0)+t.importo;});
+  // Per categoria (solo uscite nelle barre)
   const bycat={};
-  uscite.forEach(r=>{
-    const mult=freqMultiplier[r.frequenza]||1;
-    const stimato=r.importo*mult;
-    const inserito=giàInserito[r.categoria]||0;
-    // Mostra la stima mensile, ma se già inserito nel mese usa il reale
-    bycat[r.categoria]=(bycat[r.categoria]||0)+Math.max(stimato,0);
-  });
+  uscite.forEach(r=>{const mult=freqMultiplier[r.frequenza]||1;bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo*mult;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   el.innerHTML=
     `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -4380,8 +4369,18 @@ function shouldNotify(tipo){
   return prefs[tipo]||false;
 }
 
-window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});},800);};
-window.saveCartaLimite=function(){clearTimeout(cartaTimer);cartaTimer=setTimeout(async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');},800);};
+let namesTimer,cartaTimer;
+window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});toast('Nomi salvati ✓');},800);};
+window.saveCartaLimite=async function(immediate=false){
+  clearTimeout(cartaTimer);
+  const doSave=async()=>{
+    const v=parseFloat(document.getElementById('carta-limite').value)||0;
+    await saveShared('settings',{...state.settings,cartaLimite:v});
+    toast('Limite carta salvato ✓');
+  };
+  if(immediate)await doSave();
+  else cartaTimer=setTimeout(doSave,800);
+};
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function fmt(n){return Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function today(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
