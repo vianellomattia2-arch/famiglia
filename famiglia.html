@@ -1026,19 +1026,6 @@
         <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="saveNotifPrefs()">Salva preferenze</button></div>
       </div>
       <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo su questo dispositivo.</div>
-
-      <div class="card" style="border:1px solid rgba(108,159,255,.4);background:rgba(108,159,255,.04)">
-        <div class="card-title">🔧 Ricalcolo e riparazione dati</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Legge tutte le transazioni nel periodo selezionato da Firestore, rimuove i duplicati (stessa ricorrente + stesso giorno) e forza il ricalcolo di tutti i totali e le statistiche.</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
-          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Dal</label>
-            <input type="date" id="repair-from" style="font-size:13px;padding:7px 10px"></div>
-          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Al</label>
-            <input type="date" id="repair-to" style="font-size:13px;padding:7px 10px"></div>
-          <button class="btn btn-primary" onclick="repairDati()" style="align-self:flex-end">🔄 Ricalcola</button>
-        </div>
-        <div id="repair-log" style="display:none;background:var(--surface2);border-radius:10px;padding:12px;font-size:12px;line-height:2;max-height:260px;overflow-y:auto"></div>
-      </div>
       <div class="card" style="border:1px solid var(--accent);background:linear-gradient(135deg,rgba(108,159,255,.06),rgba(180,143,255,.04))">
         <div class="card-title">© Crediti</div>
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
@@ -1541,7 +1528,7 @@ window.populateCatSelect=function(selId,tipo){
 };
 
 // ===== STATE =====
-let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
+let state={transactions:[],allTransactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
 let isChildMode=false,pinTarget='adult',charts={};
 
 // ===== PROFILI — Firestore-backed =====
@@ -1846,9 +1833,45 @@ function setSyncStatus(s){const dot=document.getElementById('sync-dot'),lbl=docu
 
 // ===== FIREBASE =====
 let unsubTx=null;
+const unsubPastTx={}; // listener attivi per i mesi precedenti
+
 function listenTransactions(){
   if(unsubTx)unsubTx();
-  unsubTx=onSnapshot(collection(db,'transactions',monthKey(),'items'),snap=>{state.transactions=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();setSyncStatus('online');},()=>setSyncStatus('error'));
+  unsubTx=onSnapshot(collection(db,'transactions',monthKey(),'items'),snap=>{
+    state.transactions=snap.docs.map(d=>({id:d.id,...d.data()}));
+    rebuildAllTransactions();
+    renderAll();
+    setSyncStatus('online');
+  },()=>setSyncStatus('error'));
+  // Ascolta in live anche gli ultimi 6 mesi precedenti per il saldo multi-mese
+  listenPastMonths(6);
+}
+
+function listenPastMonths(num){
+  // Cancella listener precedenti che non servono più
+  Object.keys(unsubPastTx).forEach(mk=>{
+    let m=viewMonth,y=viewYear;
+    // Se il mese non è nei num mesi precedenti al mese corrente, cancella
+    let valid=false;
+    for(let i=1;i<=num;i++){let mm=viewMonth-i,yy=viewYear;while(mm<0){mm+=12;yy--;}if(`${yy}-${String(mm+1).padStart(2,'0')}`===mk){valid=true;break;}}
+    if(!valid){unsubPastTx[mk]();delete unsubPastTx[mk];delete historyCache[mk];}
+  });
+  for(let i=1;i<=num;i++){
+    let m=viewMonth-i,y=viewYear;while(m<0){m+=12;y--;}
+    const mk=`${y}-${String(m+1).padStart(2,'0')}`;
+    if(unsubPastTx[mk])continue; // già in ascolto
+    unsubPastTx[mk]=onSnapshot(collection(db,'transactions',mk,'items'),snap=>{
+      historyCache[mk]=snap.docs.map(d=>({id:d.id,...d.data()}));
+      rebuildAllTransactions();
+      renderDashboard(); // aggiorna saldo quando cambia un mese storico
+    },()=>{});
+  }
+}
+
+function rebuildAllTransactions(){
+  // Flat array di tutte le transazioni: mese corrente + storici
+  const past=Object.values(historyCache).flat();
+  state.allTransactions=[...state.transactions,...past];
 }
 function listenShared(){
   onSnapshot(doc(db,'shared','budgets'),snap=>{state.budgets=snap.exists()?snap.data():{};renderPage('budget');});
@@ -2207,14 +2230,20 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  const txs=state.transactions;
+  // Usa allTransactions (multi-mese) se disponibile
+  const txs=state.allTransactions.length?state.allTransactions:state.transactions;
   const isIo=t=>t.chi==='1'||t.chi==='io';
   const isLei=t=>t.chi==='2'||t.chi==='lei';
   const prelIo=txs.filter(t=>t.categoria==='prelievo'&&isIo(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const prelLei=txs.filter(t=>t.categoria==='prelievo'&&isLei(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  return{io:Math.max(0,Math.round((prelIo-speseIo)*100)/100),lei:Math.max(0,Math.round((prelLei-speseLei)*100)/100)};
+  const entrateIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const entrateLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  return{
+    io:Math.max(0,Math.round((prelIo+entrateIo-speseIo)*100)/100),
+    lei:Math.max(0,Math.round((prelLei+entrateLei-speseLei)*100)/100)
+  };
 }
 function renderPortafoglio(){
   const wrap=document.getElementById('portafoglio-wrap');if(!wrap)return;
@@ -2521,16 +2550,16 @@ function renderDashboard(){
   const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
 
-  // SALDO DISPONIBILE = saldi manuali + contanti + buoni +/- tx mese
+  // SALDO DISPONIBILE = saldi manuali + contanti + buoni +/- TUTTE le tx (mese corrente + storici)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const allTxMese=txs.filter(t=>t.data>=mkStart&&t.data<=td);
-  const entrateRealiMese=allTxMese.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteRealiMese=allTxMese.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiMese-usciteRealiMese;
+  const allTx=state.allTransactions.length?state.allTransactions:state.transactions;
+  const entrateAll=allTx.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteAll=allTx.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateAll-usciteAll;
 
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
@@ -2680,16 +2709,16 @@ function renderDashboardClassica(){
   const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
   const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  // Saldo ad oggi = patrimonio reale +/- tx mese
+  // Saldo ad oggi = patrimonio reale +/- TUTTE le tx (mese corrente + storici)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const allTxMese2=txs.filter(t=>t.data>=mkStart&&t.data<=td);
-  const entrateRealiMese2=allTxMese2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteRealiMese2=allTxMese2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiMese2-usciteRealiMese2;
+  const allTx2=state.allTransactions.length?state.allTransactions:state.transactions;
+  const entrateAll2=allTx2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteAll2=allTx2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateAll2-usciteAll2;
   // Saldo a fine mese = sOra + ricorrenti future non ancora inserite
   const oggi=new Date();
   const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
@@ -4380,103 +4409,6 @@ function shouldNotify(tipo){
 }
 
 let namesTimer,cartaTimer;
-
-window.repairDati=async function(){
-  const fromDate=document.getElementById('repair-from')?.value;
-  const toDate=document.getElementById('repair-to')?.value||today();
-  const log=document.getElementById('repair-log');
-  if(!fromDate){toast('Inserisci la data di inizio','err');return;}
-  if(fromDate>toDate){toast('La data di inizio deve essere prima della fine','err');return;}
-
-  const logLine=(msg,color='')=>{
-    if(!log)return;
-    log.style.display='block';
-    log.innerHTML+=`<div style="color:${color||'var(--text)'}">${msg}</div>`;
-    log.scrollTop=log.scrollHeight;
-  };
-  log.style.display='block';log.innerHTML='';
-  logLine('⏳ Lettura transazioni da Firestore...','var(--muted)');
-
-  // Calcola i mesi da coprire
-  const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js');
-  const mesi=[];
-  const cur=new Date(fromDate+'T12:00:00');
-  const fine=new Date(toDate+'T12:00:00');
-  while(cur<=fine){
-    const mk=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;
-    if(!mesi.includes(mk))mesi.push(mk);
-    cur.setMonth(cur.getMonth()+1);
-  }
-  logLine(`📅 Mesi da analizzare: ${mesi.join(', ')}','var(--muted)'`);
-
-  // Leggi tutte le transazioni dei mesi
-  let tuttiTx=[];
-  for(const mk of mesi){
-    const snap=await gd(collection(db,'transactions',mk,'items'));
-    const txMk=snap.docs.map(d=>({id:d.id,mk,...d.data()}));
-    tuttiTx=tuttiTx.concat(txMk);
-    logLine(`  ✓ ${mk}: ${txMk.length} transazioni lette`,'var(--muted)');
-  }
-
-  // Filtra nel range di date
-  const txRange=tuttiTx.filter(t=>t.data>=fromDate&&t.data<=toDate);
-  logLine(`📊 Transazioni nel range: ${txRange.length} totali`);
-
-  // === STEP 1: Trova e rimuovi duplicati ===
-  logLine('','');
-  logLine('🔍 Ricerca duplicati ricorrenti...','var(--accent)');
-  const seen={};
-  const daEliminare=[];
-  // Ordina per data creazione (tieni il più vecchio)
-  txRange.sort((a,b)=>(a.creato?.seconds||0)-(b.creato?.seconds||0));
-  txRange.forEach(t=>{
-    if(!t.ricorrenteId)return;
-    const key=`${t.ricorrenteId}_${t.data}`;
-    if(seen[key])daEliminare.push(t);
-    else seen[key]=t;
-  });
-
-  if(daEliminare.length===0){
-    logLine('✅ Nessun duplicato trovato','var(--green)');
-  }else{
-    logLine(`🗑️ Trovati ${daEliminare.length} duplicati — eliminazione in corso...','var(--red)'`);
-    let eliminati=0;
-    for(const t of daEliminare){
-      try{
-        await deleteDoc(doc(db,'transactions',t.mk,'items',t.id));
-        eliminati++;
-        logLine(`  ✓ Rimosso: ${t.desc||'?'} — ${t.data} (${t.tipo==='entrata'?'+':'-'}€${fmt(t.importo||0)})','var(--muted)'`);
-      }catch(e){
-        logLine(`  ⚠️ Errore su ${t.id}: ${e.message}','var(--red)'`);
-      }
-    }
-    logLine(`✅ ${eliminati} duplicati rimossi','var(--green)'`);
-  }
-
-  // === STEP 2: Ricarica le transazioni del mese corrente da Firestore ===
-  logLine('','');
-  logLine('🔄 Ricaricamento transazioni in corso...','var(--accent)');
-  const mkCorrente=monthKey();
-  if(mesi.includes(mkCorrente)){
-    const snapFresh=await gd(collection(db,'transactions',mkCorrente,'items'));
-    state.transactions=snapFresh.docs.map(d=>({id:d.id,...d.data()}));
-    logLine(`  ✓ ${state.transactions.length} transazioni ricaricate per ${mkCorrente}`,'var(--muted)');
-  }
-
-  // === STEP 3: Ricalcola e ridisegna tutto ===
-  logLine('','');
-  logLine('📈 Ricalcolo totali e statistiche...','var(--accent)');
-  renderDashboard();
-  const activePage=document.querySelector('.page.active')?.id;
-  if(activePage)renderPage(activePage.replace('page-',''));
-  logLine('  ✓ Dashboard aggiornata','var(--muted)');
-  logLine('  ✓ Statistiche ricalcolate','var(--muted)');
-  logLine('  ✓ Grafici aggiornati','var(--muted)');
-
-  logLine('','');
-  logLine('🎉 Ricalcolo completato!','var(--green)');
-  toast('✅ Ricalcolo completato');
-};
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});toast('Nomi salvati ✓');},800);};
 window.saveCartaLimite=async function(immediate=false){
   clearTimeout(cartaTimer);
