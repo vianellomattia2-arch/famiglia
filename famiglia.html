@@ -19,15 +19,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="author" content="Mattia Vianello">
 <meta name="copyright" content="© 2026 Mattia Vianello. Tutti i diritti riservati.">
-<meta name="description" content="Our Family — App di gestione finanziaria familiare. Ideata e creata da Mattia Vianello.">
+<meta name="description" content="Nest — App di gestione finanziaria familiare. Ideata e creata da Mattia Vianello.">
 <!-- PWA -->
 <link rel="manifest" href="/famiglia/manifest.json">
 <link rel="apple-touch-icon" href="/famiglia/icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Our Family">
-<title>Our Family ❤️ — Finanze di Famiglia</title>
+<meta name="apple-mobile-web-app-title" content="Nest">
+<title>Nest — Finanze di Famiglia</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&family=Lato:wght@300;400;700&family=Nunito:wght@300;400;600;700&family=Poppins:wght@300;400;500;600&family=Merriweather:wght@300;400;700&family=Playfair+Display:wght@400;600&family=Source+Code+Pro:wght@400;500&display=swap');
@@ -234,6 +234,18 @@
   main{padding:10px;max-width:900px;margin:0 auto;}
   .page{display:none;}.page.active{display:block;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 15px;margin-bottom:10px;}
+  .giochi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .gioco-card{text-align:center;cursor:pointer;transition:transform .15s,border-color .15s;}
+  .gioco-card:hover{transform:translateY(-2px);border-color:var(--accent);}
+  .gioco-card:active{transform:translateY(0);}
+  .gioco-emoji{font-size:34px;margin-bottom:6px;}
+  .gioco-best{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:8px;}
+  .gioco-ctrl-btn{width:56px;height:56px;border-radius:14px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:22px;cursor:pointer;user-select:none;}
+  .gioco-ctrl-btn:active{background:var(--accent);color:var(--bg);}
+  .giochi-lb-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .giochi-lb-row:last-child{border-bottom:none;}
+  .giochi-lb-row .gname{font-weight:500;}
+  .giochi-lb-row .gscore{font-family:var(--font-mono);color:var(--gold);}
   .card-title{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
   .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
   .summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 14px;}
@@ -349,7 +361,7 @@
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;}
   .modal-title{font-family:var(--font-serif);font-size:20px;margin-bottom:20px;}
   .modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;}
-  #lock-screen{position:fixed;inset:0;background:linear-gradient(145deg,#0a0f1e 0%,#0f1117 50%,#12091a 100%);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;}
+  #lock-screen{position:fixed;inset:0;background:#15151a;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;}
   #lock-screen.hidden{display:none;}
   .lock-title{font-family:var(--font-serif);font-size:28px;}
   .lock-sub{color:var(--muted);font-size:14px;}
@@ -393,7 +405,8 @@
 <body data-theme="dark-midnight">
 
 <div class="loading-overlay" id="loading-screen">
-  <div style="font-size:36px">🏠</div><div class="spinner"></div>
+  <svg width="36" height="36" viewBox="0 0 24 24"><path d="M2 16c1 3 4 5 10 5s9-2 10-5c-3 1.5-6 2-10 2s-7-.5-10-2z" fill="#854F0B"/><path d="M3 14c1.5 2 5 3 9 3s7.5-1 9-3c-2.5 1-5.5 1.5-9 1.5S5.5 15 3 14z" fill="#BA7517"/><circle cx="12" cy="11" r="3" fill="#FAC775" stroke="#412402" stroke-width="0.5"/></svg>
+  <div class="spinner"></div>
   <div style="color:var(--muted);font-size:14px;">Connessione in corso...</div>
 </div>
 <!-- Fallback: nascondi loading dopo 3 secondi comunque -->
@@ -411,8 +424,8 @@
 <div id="lock-screen" class="hidden">
   <!-- Background decorativo -->
   <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
-    <div style="position:absolute;top:-20%;right:-10%;width:60vmin;height:60vmin;border-radius:50%;background:radial-gradient(circle,rgba(108,159,255,.18),transparent 70%)"></div>
-    <div style="position:absolute;bottom:-15%;left:-10%;width:50vmin;height:50vmin;border-radius:50%;background:radial-gradient(circle,rgba(180,143,255,.14),transparent 70%)"></div>
+    <div style="position:absolute;top:-20%;right:-10%;width:60vmin;height:60vmin;border-radius:50%;background:radial-gradient(circle,rgba(250,199,117,.08),transparent 70%)"></div>
+    <div style="position:absolute;bottom:-15%;left:-10%;width:50vmin;height:50vmin;border-radius:50%;background:radial-gradient(circle,rgba(186,117,23,.08),transparent 70%)"></div>
   </div>
 
   <!-- Contenuto centrato -->
@@ -420,10 +433,35 @@
 
     <!-- Logo + titolo -->
     <div style="margin-bottom:32px;text-align:center">
-      <div style="width:88px;height:88px;border-radius:28px;background:linear-gradient(135deg,#2dd4bf,#6c9fff,#b48fff);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 20px;box-shadow:0 12px 40px rgba(108,159,255,.35)">🏠</div>
-      <div style="font-family:'DM Serif Display',serif;font-size:clamp(28px,6vw,42px);line-height:1;margin-bottom:8px">Our <span style="color:#6c9fff">Family</span> <span style="color:#ff6b7a">❤️</span></div>
-      <div style="font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.5px">La tua app finanziaria familiare</div>
+      <div id="splash-icon" style="width:88px;height:88px;border-radius:24px;background:#412402;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;opacity:0">
+        <svg width="48" height="48" viewBox="0 0 24 24">
+          <path d="M2 16c1 3 4 5 10 5s9-2 10-5c-3 1.5-6 2-10 2s-7-.5-10-2z" fill="#854F0B"/>
+          <path d="M3 14c1.5 2 5 3 9 3s7.5-1 9-3c-2.5 1-5.5 1.5-9 1.5S5.5 15 3 14z" fill="#BA7517"/>
+          <circle cx="12" cy="11" r="3.4" fill="#FAC775" stroke="#412402" stroke-width="0.6"/>
+        </svg>
+      </div>
+      <div id="splash-title" style="font-family:'DM Serif Display',serif;font-size:clamp(28px,6vw,42px);line-height:1;margin-bottom:8px;opacity:0">Nest</div>
+      <div id="splash-tag" style="font-size:13px;color:rgba(255,255,255,.4);letter-spacing:.5px;opacity:0">La tua app finanziaria familiare</div>
     </div>
+    <script>
+      (function(){
+        function playSplashFade(){
+          var icon=document.getElementById('splash-icon');
+          var title=document.getElementById('splash-title');
+          var tag=document.getElementById('splash-tag');
+          [icon,title,tag].forEach(function(el){if(el){el.style.transition='none';el.style.opacity='0';el.style.transform='translateY(8px) scale(0.92)';}});
+          requestAnimationFrame(function(){
+            requestAnimationFrame(function(){
+              if(icon){icon.style.transition='opacity .7s ease-out, transform .7s ease-out';icon.style.opacity='1';icon.style.transform='translateY(0) scale(1)';}
+              if(title){title.style.transition='opacity .7s ease-out .25s, transform .7s ease-out .25s';title.style.opacity='1';title.style.transform='translateY(0) scale(1)';}
+              if(tag){tag.style.transition='opacity .7s ease-out .45s, transform .7s ease-out .45s';tag.style.opacity='1';tag.style.transform='translateY(0) scale(1)';}
+            });
+          });
+        }
+        window.playSplashFade=playSplashFade;
+        playSplashFade();
+      })();
+    </script>
 
     <!-- STEP 0: setup iniziale (prima apertura) -->
     <div id="lock-step-setup" style="display:none;width:100%">
@@ -513,7 +551,7 @@
 <!-- SIDEBAR -->
 <div id="sidebar">
   <div id="sidebar-header">
-    <div id="sidebar-logo">Our <span>Family</span> ❤️</div>
+    <div id="sidebar-logo">Nest</div>
     <button id="sidebar-close" onclick="closeSidebar()">✕</button>
   </div>
   <div id="sidebar-nav">
@@ -546,6 +584,7 @@
     </div>
 
     <button class="sidebar-item" data-page="liste" onclick="sidebarNav('liste',this)"><span class="si-icon">✅</span><span class="si-label">Liste</span></button>
+    <button class="sidebar-item" data-page="giochi" onclick="sidebarNav('giochi',this)"><span class="si-icon">🎮</span><span class="si-label">Giochi</span></button>
     <button class="sidebar-item" data-page="note" onclick="sidebarNav('note',this)"><span class="si-icon">📝</span><span class="si-label">Note</span></button>
     <button class="sidebar-item" data-page="report" onclick="sidebarNav('report',this)"><span class="si-icon">📄</span><span class="si-label">Report</span></button>
     <button class="sidebar-item" data-page="impostazioni" onclick="sidebarNav('impostazioni',this)"><span class="si-icon">⚙️</span><span class="si-label">Impostazioni</span></button>
@@ -562,7 +601,7 @@
     <button class="hamburger" onclick="openSidebar()" aria-label="Menu">
       <span></span><span></span><span></span>
     </button>
-    <div class="logo">Our <span>Family</span> ❤️</div>
+    <div class="logo">Nest</div>
   </div>
   <div class="header-right">
     <div id="sync-status"><div id="sync-dot"></div><span id="sync-label">...</span></div>
@@ -794,6 +833,45 @@
   <div class="page" id="page-liste">
     <div class="section-header"><div class="section-title">Liste</div><button class="btn btn-primary btn-sm" onclick="openListaModal()">+ Nuova lista</button></div>
     <div id="liste-container"></div>
+  </div>
+
+  <!-- GIOCHI -->
+  <div class="page" id="page-giochi">
+    <div class="section-header"><div class="section-title">🎮 Giochi</div></div>
+    <div id="giochi-hub">
+      <div class="giochi-grid">
+        <div class="card gioco-card" onclick="apriGioco('monete')">
+          <div class="gioco-emoji">🪙</div>
+          <div class="card-title">Acchiappa le Monete</div>
+          <div class="sub">Prendi monete e buoni, evita le spese impreviste</div>
+          <div class="gioco-best" id="best-monete"></div>
+        </div>
+        <div class="card gioco-card" onclick="apriGioco('snake')">
+          <div class="gioco-emoji">🐍</div>
+          <div class="card-title">Snake</div>
+          <div class="sub">Il classico, mangia e cresci senza toccarti</div>
+          <div class="gioco-best" id="best-snake"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">🏆 Classifica</div>
+        <div id="giochi-classifica"></div>
+      </div>
+    </div>
+
+    <div id="giochi-play" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="chiudiGioco()">← Indietro</button>
+        <div id="gioco-titolo" style="font-family:var(--font-serif);font-size:18px"></div>
+        <div style="width:70px"></div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div id="gioco-hud" style="display:flex;justify-content:space-around;margin-bottom:10px;font-family:var(--font-mono);font-size:14px"></div>
+        <canvas id="gioco-canvas" style="width:100%;max-width:420px;background:var(--surface2);border-radius:var(--radius);touch-action:none;"></canvas>
+        <div id="gioco-controls" style="margin-top:12px"></div>
+        <div id="gioco-overlay" style="margin-top:10px"></div>
+      </div>
+    </div>
   </div>
 
   <!-- RICORRENTI -->
@@ -1039,9 +1117,11 @@
       <div class="card" style="border:1px solid var(--accent);background:linear-gradient(135deg,rgba(108,159,255,.06),rgba(180,143,255,.04))">
         <div class="card-title">© Crediti</div>
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🏠</div>
+          <div style="width:52px;height:52px;border-radius:14px;background:#412402;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="30" height="30" viewBox="0 0 24 24"><path d="M2 16c1 3 4 5 10 5s9-2 10-5c-3 1.5-6 2-10 2s-7-.5-10-2z" fill="#854F0B"/><path d="M3 14c1.5 2 5 3 9 3s7.5-1 9-3c-2.5 1-5.5 1.5-9 1.5S5.5 15 3 14z" fill="#BA7517"/><circle cx="12" cy="11" r="3" fill="#FAC775" stroke="#412402" stroke-width="0.5"/></svg>
+          </div>
           <div>
-            <div style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Our Family</div>
+            <div style="font-family:var(--font-serif);font-size:18px;color:var(--text)">Nest</div>
             <div style="font-size:12px;color:var(--muted);margin-top:2px">App di finanza familiare</div>
           </div>
         </div>
@@ -1060,7 +1140,7 @@
 </main>
 
 <div id="toast"></div>
-<div style="text-align:center;padding:20px 16px 32px;font-size:11px;color:var(--border)">© 2026 Mattia Vianello — Our Family</div>
+<div style="text-align:center;padding:20px 16px 32px;font-size:11px;color:var(--border)">© 2026 Mattia Vianello — Nest</div>
 
 <!-- MODALI -->
 <div class="modal-overlay" id="tx-modal">
@@ -1321,7 +1401,7 @@ async function initNotifiche(){
       const n=payload.notification||{};
       const d=payload.data||{};
       // Usa corpo arricchito se disponibile (da Firestore), altrimenti payload FCM
-      const titolo=d.titolo||n.title||'Our Family ❤️';
+      const titolo=d.titolo||n.title||'Nest';
       const corpo=d.corpo||n.body||'';
       toast(`${titolo}${corpo?' — '+corpo:''}`);
       if(Notification.permission==='granted'){
@@ -1550,7 +1630,7 @@ window.populateCatSelect=function(selId,tipo){
 };
 
 // ===== STATE =====
-let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
+let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[],giochi:{monete:{io:0,lei:0},snake:{io:0,lei:0}}};
 let isChildMode=false,pinTarget='adult',charts={};
 
 // ===== PROFILI — Firestore-backed =====
@@ -1612,6 +1692,7 @@ let setupEmoji='👤';
 
 function showSetup(){
   document.getElementById('lock-screen').classList.remove('hidden');
+  if(typeof window.playSplashFade==='function')window.playSplashFade();
   document.getElementById('lock-step-setup').style.display='block';
   document.getElementById('lock-step-profiles').style.display='none';
   document.getElementById('lock-step-pin').style.display='none';
@@ -1878,6 +1959,7 @@ function listenShared(){
   // Re-render dashboard dopo 2s per assicurarsi che tutti i dati siano caricati
   setTimeout(()=>renderDashboard(),2000);
   onSnapshot(doc(db,'shared','note'),snap=>{state.note=snap.exists()?(snap.data().list||[]):[];renderPage('note');});
+  onSnapshot(doc(db,'shared','giochi'),snap=>{state.giochi=snap.exists()?snap.data():{monete:{io:0,lei:0},snake:{io:0,lei:0}};renderPage('giochi');});
   onSnapshot(collection(db,'note_private'),snap=>{state.notePrivate=snap.docs.map(d=>({id:d.id,...d.data()})).filter(n=>n.autore===sessionStorage.getItem('cn_profile_name'));renderPage('note');});
   onSnapshot(doc(db,'shared','portafoglio'),snap=>{state.portafoglio=snap.exists()?snap.data():{io:0,lei:0};renderPortafoglio();});
   // Ascolta notifiche — ignora quelle già esistenti al caricamento
@@ -2047,6 +2129,7 @@ function startApp(){
   }else{
     renderLockProfiles();
     document.getElementById('lock-screen').classList.remove('hidden');
+    if(typeof window.playSplashFade==='function')window.playSplashFade();
     }
   });
 }
@@ -2064,6 +2147,7 @@ const TAB_PAGES={
   'agenda':   {icon:'📅',label:'Agenda'},
   'note':     {icon:'📝',label:'Note'},
   'liste':    {icon:'✅',label:'Liste'},
+  'giochi':   {icon:'🎮',label:'Giochi'},
 };
 let openTabs=['dashboard'];
 let activeTab='dashboard';
@@ -2181,6 +2265,7 @@ window.doLogout=function(){sessionStorage.clear();location.reload();};
 // ===== NAV =====
 let currentFilter='tutte';
 window.showPage=function(name,btn){
+  if(typeof fermaGioco==='function'&&currentGame&&name!=='giochi'){fermaGioco();currentGame=null;}
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('nav .tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
@@ -2198,6 +2283,7 @@ function renderPage(name){
   if(name==='agenda')renderAgenda();
   if(name==='risparmi')renderGoals();
   if(name==='liste')renderListe();
+  if(name==='giochi')renderGiochiHub();
   if(name==='ricorrenti')renderRicorrenti();
   if(name==='grafici')renderGrafici();
   if(name==='saldi')renderSaldi();
@@ -3666,7 +3752,7 @@ window.exportCSV=async function(numMesi=1){
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download=`OurFamily_${monthKey()}.csv`;a.click();
+  a.href=url;a.download=`Nest_${monthKey()}.csv`;a.click();
   URL.revokeObjectURL(url);
   toast('Export completato ✓');
 };
@@ -4076,7 +4162,7 @@ window.printLista=function(lid){
   const lista=state.liste.find(l=>l.id===lid);if(!lista)return;
   const items=lista.items||[];
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>${lista.name}</title><style>body{font-family:sans-serif;padding:20px;max-width:500px}h1{font-size:20px;margin-bottom:16px}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #eee;display:flex;gap:10px;font-size:15px}.done{text-decoration:line-through;color:#999}</style></head><body><h1>${lista.emoji||'📋'} ${lista.name}</h1><ul>${items.map(i=>`<li><span>${i.done?'☑':'☐'}</span><span class="${i.done?'done':''}">${i.text}</span></li>`).join('')}</ul><p style="margin-top:20px;font-size:12px;color:#999">Our Family — ${new Date().toLocaleDateString('it-IT')}</p></body></html>`);
+  w.document.write(`<!DOCTYPE html><html><head><title>${lista.name}</title><style>body{font-family:sans-serif;padding:20px;max-width:500px}h1{font-size:20px;margin-bottom:16px}ul{list-style:none;padding:0}li{padding:8px 0;border-bottom:1px solid #eee;display:flex;gap:10px;font-size:15px}.done{text-decoration:line-through;color:#999}</style></head><body><h1>${lista.emoji||'📋'} ${lista.name}</h1><ul>${items.map(i=>`<li><span>${i.done?'☑':'☐'}</span><span class="${i.done?'done':''}">${i.text}</span></li>`).join('')}</ul><p style="margin-top:20px;font-size:12px;color:#999">Nest — ${new Date().toLocaleDateString('it-IT')}</p></body></html>`);
   w.document.close();w.print();
 };
 
@@ -4684,7 +4770,238 @@ window.saveDisegno=async function(){
   toast('Disegno salvato ✓');
 };
 
+// ===== GIOCHI =====
+let activeChi=null,currentGame=null,gameLoopId=null,keyHandlerSnake=null;
+
+function determinaChi(){
+  const pn=(sessionStorage.getItem('cn_profile_name')||'').trim().toLowerCase();
+  const n=(state.settings.names||['','']).map(x=>(x||'').trim().toLowerCase());
+  if(pn&&n[0]&&pn===n[0])return'io';
+  if(pn&&n[1]&&pn===n[1])return'lei';
+  return null;
+}
+
+window.renderGiochiHub=function(){
+  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0}};
+  const n=state.settings.names||['Matti','Ilaria'];
+  const bm=document.getElementById('best-monete');
+  if(bm)bm.innerHTML=`🏆 ${Math.max(g.monete?.io||0,g.monete?.lei||0)} pt`;
+  const bs=document.getElementById('best-snake');
+  if(bs)bs.innerHTML=`🏆 ${Math.max(g.snake?.io||0,g.snake?.lei||0)} pt`;
+  const rows=[
+    {label:'🪙 Monete · '+(n[0]||'Matti'),val:g.monete?.io||0},
+    {label:'🪙 Monete · '+(n[1]||'Ilaria'),val:g.monete?.lei||0},
+    {label:'🐍 Snake · '+(n[0]||'Matti'),val:g.snake?.io||0},
+    {label:'🐍 Snake · '+(n[1]||'Ilaria'),val:g.snake?.lei||0},
+  ].sort((a,b)=>b.val-a.val);
+  const box=document.getElementById('giochi-classifica');
+  if(box)box.innerHTML=rows.map(r=>`<div class="giochi-lb-row"><span class="gname">${r.label}</span><span class="gscore">${r.val} pt</span></div>`).join('')||'<div class="sub">Ancora nessun punteggio</div>';
+};
+
+function fermaGioco(){
+  if(gameLoopId)cancelAnimationFrame(gameLoopId);
+  gameLoopId=null;
+  if(keyHandlerSnake){window.removeEventListener('keydown',keyHandlerSnake);keyHandlerSnake=null;}
+  const canvas=document.getElementById('gioco-canvas');
+  if(canvas){const c2=canvas.cloneNode(true);canvas.parentNode.replaceChild(c2,canvas);}
+}
+
+function chiediChi(cb){
+  const overlay=document.getElementById('gioco-overlay');
+  const n=state.settings.names||['Matti','Ilaria'];
+  overlay.innerHTML=`<div style="margin-bottom:8px;font-size:13px;color:var(--muted)">Chi gioca?</div>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <button class="btn btn-primary btn-sm" id="chi-io-btn">${n[0]||'Matti'}</button>
+      <button class="btn btn-primary btn-sm" id="chi-lei-btn">${n[1]||'Ilaria'}</button>
+    </div>`;
+  document.getElementById('chi-io-btn').onclick=()=>{activeChi='io';overlay.innerHTML='';cb();};
+  document.getElementById('chi-lei-btn').onclick=()=>{activeChi='lei';overlay.innerHTML='';cb();};
+}
+
+window.apriGioco=function(game){
+  currentGame=game;
+  document.getElementById('giochi-hub').style.display='none';
+  document.getElementById('giochi-play').style.display='block';
+  document.getElementById('gioco-titolo').textContent=game==='monete'?'🪙 Acchiappa le Monete':'🐍 Snake';
+  document.getElementById('gioco-overlay').innerHTML='';
+  const auto=determinaChi();
+  if(auto){activeChi=auto;avviaGioco(game);}
+  else{chiediChi(()=>avviaGioco(game));}
+};
+window.chiudiGioco=function(){
+  fermaGioco();
+  currentGame=null;
+  document.getElementById('giochi-play').style.display='none';
+  document.getElementById('giochi-hub').style.display='block';
+  renderGiochiHub();
+};
+function avviaGioco(game){
+  fermaGioco();
+  if(game==='monete')avviaMonete();
+  if(game==='snake')avviaSnake();
+}
+
+async function registraPunteggio(game,punteggio){
+  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0}};
+  const cur=g[game]?.[activeChi]||0;
+  if(punteggio>cur){
+    const nuovo={...g,[game]:{...(g[game]||{io:0,lei:0}),[activeChi]:punteggio}};
+    state.giochi=nuovo;
+    try{await saveShared('giochi',nuovo);}catch(e){}
+    return true;
+  }
+  return false;
+}
+
+// --- Gioco 1: Acchiappa le Monete ---
+function avviaMonete(){
+  const canvas=document.getElementById('gioco-canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=360;canvas.height=480;
+  const hud=document.getElementById('gioco-hud');
+  const controls=document.getElementById('gioco-controls');
+  controls.innerHTML=`<button class="gioco-ctrl-btn" id="mon-left">◀</button> <button class="gioco-ctrl-btn" id="mon-right">▶</button>`;
+  const cs=getComputedStyle(document.documentElement);
+  let paddleX=canvas.width/2-30,paddleW=60,paddleH=14;
+  let items=[],score=0,vite=3,spawnTimer=0,speed=2.2,running=true;
+  let movingLeft=false,movingRight=false;
+
+  function spawn(){
+    const r=Math.random();
+    let tipo='coin';
+    if(r<0.14)tipo='bad';else if(r<0.3)tipo='buono';
+    items.push({x:Math.random()*(canvas.width-24)+12,y:-20,tipo});
+  }
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle=cs.getPropertyValue('--accent')||'#7aabff';
+    ctx.fillRect(paddleX,canvas.height-30,paddleW,paddleH);
+    ctx.font='24px sans-serif';ctx.textAlign='center';
+    items.forEach(it=>ctx.fillText(it.tipo==='coin'?'🪙':it.tipo==='buono'?'🎟️':'🔴',it.x,it.y));
+  }
+  function update(){
+    if(movingLeft)paddleX-=6;
+    if(movingRight)paddleX+=6;
+    paddleX=Math.max(0,Math.min(canvas.width-paddleW,paddleX));
+    spawnTimer++;
+    const soglia=Math.max(24,55-Math.floor(score/50));
+    if(spawnTimer>soglia){spawnTimer=0;spawn();}
+    items.forEach(it=>it.y+=speed);
+    items=items.filter(it=>{
+      if(it.y>canvas.height-30&&it.y<canvas.height-10&&it.x>paddleX-10&&it.x<paddleX+paddleW+10){
+        if(it.tipo==='coin')score+=10;
+        else if(it.tipo==='buono')score+=15;
+        else{vite--;score=Math.max(0,score-5);}
+        return false;
+      }
+      return it.y<canvas.height+20;
+    });
+    speed=2.2+score/300;
+    hud.innerHTML=`<div>💰 ${score} pt</div><div>${'❤️'.repeat(Math.max(0,vite))}</div>`;
+    if(vite<=0)fineMonete();
+  }
+  function loop(){
+    if(!running)return;
+    update();draw();
+    gameLoopId=requestAnimationFrame(loop);
+  }
+  async function fineMonete(){
+    running=false;
+    const record=await registraPunteggio('monete',score);
+    document.getElementById('gioco-overlay').innerHTML=`
+      <div style="font-size:16px;margin-bottom:6px">${record?'🎉 Nuovo record!':'Game over'}</div>
+      <div style="font-family:var(--font-mono);margin-bottom:10px">Punteggio: ${score} pt</div>
+      <button class="btn btn-primary btn-sm" onclick="apriGioco('monete')">🔁 Rigioca</button>`;
+  }
+  canvas.addEventListener('pointermove',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const scale=canvas.width/rect.width;
+    paddleX=(e.clientX-rect.left)*scale-paddleW/2;
+  });
+  const bl=document.getElementById('mon-left'),br=document.getElementById('mon-right');
+  bl.addEventListener('pointerdown',()=>movingLeft=true);
+  bl.addEventListener('pointerup',()=>movingLeft=false);
+  bl.addEventListener('pointerleave',()=>movingLeft=false);
+  br.addEventListener('pointerdown',()=>movingRight=true);
+  br.addEventListener('pointerup',()=>movingRight=false);
+  br.addEventListener('pointerleave',()=>movingRight=false);
+  hud.innerHTML=`<div>💰 0 pt</div><div>❤️❤️❤️</div>`;
+  gameLoopId=requestAnimationFrame(loop);
+}
+
+// --- Gioco 2: Snake ---
+function avviaSnake(){
+  const canvas=document.getElementById('gioco-canvas');
+  const ctx=canvas.getContext('2d');
+  const cols=18,rows=24,cell=20;
+  canvas.width=cols*cell;canvas.height=rows*cell;
+  const hud=document.getElementById('gioco-hud');
+  const controls=document.getElementById('gioco-controls');
+  controls.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,60px);gap:4px;justify-content:center">
+      <div></div><button class="gioco-ctrl-btn" id="sn-up">▲</button><div></div>
+      <button class="gioco-ctrl-btn" id="sn-left">◀</button><div></div><button class="gioco-ctrl-btn" id="sn-right">▶</button>
+      <div></div><button class="gioco-ctrl-btn" id="sn-down">▼</button><div></div>
+    </div>`;
+  const cs=getComputedStyle(document.documentElement);
+  let snake=[{x:9,y:12},{x:8,y:12},{x:7,y:12}];
+  let dir={x:1,y:0},nextDir={x:1,y:0},score=0,running=true,tickMs=140,lastTick=0;
+  let food=spawnFood();
+
+  function spawnFood(){
+    let p;
+    do{p={x:Math.floor(Math.random()*cols),y:Math.floor(Math.random()*rows)};}
+    while(snake.some(s=>s.x===p.x&&s.y===p.y));
+    return p;
+  }
+  function draw(){
+    ctx.fillStyle=cs.getPropertyValue('--surface2')||'#222';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle=cs.getPropertyValue('--green')||'#5ee8aa';
+    snake.forEach(s=>ctx.fillRect(s.x*cell+1,s.y*cell+1,cell-2,cell-2));
+    ctx.font=(cell-2)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🪙',food.x*cell+cell/2,food.y*cell+cell/2);
+  }
+  function step(){
+    dir=nextDir;
+    const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
+    if(head.x<0||head.x>=cols||head.y<0||head.y>=rows||snake.some(s=>s.x===head.x&&s.y===head.y)){fineSnake();return;}
+    snake.unshift(head);
+    if(head.x===food.x&&head.y===food.y){score+=10;food=spawnFood();tickMs=Math.max(70,tickMs-2);}
+    else snake.pop();
+    hud.innerHTML=`<div>🐍 ${score} pt</div><div>Lunghezza: ${snake.length}</div>`;
+  }
+  function loop(ts){
+    if(!running)return;
+    if(ts-lastTick>tickMs){lastTick=ts;step();draw();}
+    if(running)gameLoopId=requestAnimationFrame(loop);
+  }
+  async function fineSnake(){
+    running=false;
+    const record=await registraPunteggio('snake',score);
+    document.getElementById('gioco-overlay').innerHTML=`
+      <div style="font-size:16px;margin-bottom:6px">${record?'🎉 Nuovo record!':'Game over'}</div>
+      <div style="font-family:var(--font-mono);margin-bottom:10px">Punteggio: ${score} pt</div>
+      <button class="btn btn-primary btn-sm" onclick="apriGioco('snake')">🔁 Rigioca</button>`;
+  }
+  function setDir(x,y){if(dir.x===-x&&dir.y===-y)return;nextDir={x,y};}
+  keyHandlerSnake=(e)=>{
+    if(e.key==='ArrowUp')setDir(0,-1);
+    else if(e.key==='ArrowDown')setDir(0,1);
+    else if(e.key==='ArrowLeft')setDir(-1,0);
+    else if(e.key==='ArrowRight')setDir(1,0);
+  };
+  window.addEventListener('keydown',keyHandlerSnake);
+  document.getElementById('sn-up').addEventListener('click',()=>setDir(0,-1));
+  document.getElementById('sn-down').addEventListener('click',()=>setDir(0,1));
+  document.getElementById('sn-left').addEventListener('click',()=>setDir(-1,0));
+  document.getElementById('sn-right').addEventListener('click',()=>setDir(1,0));
+  hud.innerHTML=`<div>🐍 0 pt</div><div>Lunghezza: 3</div>`;
+  draw();
+  gameLoopId=requestAnimationFrame(loop);
+}
+
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+
 </script>
 </body>
 </html>
