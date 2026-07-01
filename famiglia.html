@@ -1026,15 +1026,12 @@
         <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="saveNotifPrefs()">Salva preferenze</button></div>
       </div>
       <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo su questo dispositivo.</div>
-
       <div class="card" style="border:1px solid rgba(108,159,255,.4);background:rgba(108,159,255,.04)">
         <div class="card-title">🔧 Ricalcolo e riparazione dati</div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Rimuove transazioni ricorrenti duplicate nel periodo, ricarica tutte le transazioni da Firestore e ricalcola saldo, portafoglio, statistiche e grafici.</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Rimuove duplicati ricorrenti e ricalcola saldo, portafoglio, statistiche e grafici.</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
-          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Dal</label>
-            <input type="date" id="repair-from" style="font-size:13px;padding:7px 10px"></div>
-          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Al</label>
-            <input type="date" id="repair-to" style="font-size:13px;padding:7px 10px"></div>
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Dal</label><input type="date" id="repair-from" style="font-size:13px;padding:7px 10px"></div>
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Al</label><input type="date" id="repair-to" style="font-size:13px;padding:7px 10px"></div>
           <button class="btn btn-primary" onclick="repairDati()" style="align-self:flex-end">🔄 Ricalcola</button>
         </div>
         <div id="repair-log" style="display:none;background:var(--surface2);border-radius:10px;padding:12px;font-size:12px;line-height:2;max-height:260px;overflow-y:auto"></div>
@@ -1533,9 +1530,9 @@ const ALL_CATS=[...CATEGORIES.uscita,...CATEGORIES.entrata];
 function catById(id){return ALL_CATS.find(c=>c.id===id)||{label:'Altro',icon:'📦',color:'#7a7f94'};}
 // I prelievi bancomat NON sono spese reali — sono trasferimenti interni conto→portafoglio
 // Le spese reali sono quelle che poi vengono registrate con metodo contanti
-// isSpesaReale: usata per il SALDO DISPONIBILE — esclude carta (già nel saldo conto) e prelievi
+// isSpesaReale: per SALDO DISPONIBILE — esclude carta (già nel saldo conto) e prelievi
 function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo'&&t.metodo!=='carta'&&(!t.split||!t.split.some(s=>s.metodo==='carta'));}
-// isSpesaStat: usata per STATISTICHE e GRAFICI — include carta ma esclude prelievi
+// isSpesaStat: per STATISTICHE/GRAFICI — include carta, esclude solo prelievi
 function isSpesaStat(t){return t.tipo==='uscita'&&t.categoria!=='prelievo';}
 window.populateCatSelect=function(selId,tipo){
   const sel=document.getElementById(selId),cats=CATEGORIES[tipo]||CATEGORIES.uscita,g={};
@@ -2522,23 +2519,26 @@ function renderDashboard(){
   const pwrap=document.getElementById('portafoglio-wrap');if(pwrap)pwrap.innerHTML='';
   const txs=state.transactions,td=today();
   const mkStart=monthKey()+'-01';
-  const txThisMonth=txs.filter(t=>t.data>=mkStart&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const uscite=txThisMonth.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
-  const eAll=txs.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const uAll=txs.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
+  // Transazioni fino ad OGGI (data <= oggi) — per il saldo disponibile ora
+  const txAdOggi=txs.filter(t=>t.data>=mkStart&&t.data<=td);
+  // Transazioni di tutto il mese (incluse quelle future) — per le statistiche mese
+  const txThisMonth=txs.filter(t=>t.data>=mkStart);
+  const entrate=txAdOggi.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uscite=txAdOggi.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
+  const eAll=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uAll=txThisMonth.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
 
-  // SALDO DISPONIBILE = saldi manuali + contanti + buoni + entrate reali - uscite reali (NO carta, già nel saldo conto)
+  // SALDO DISPONIBILE OGGI = saldi manuali + tx reali con data ≤ oggi (NO carta, NO future)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  // Usa tutte le tx caricate (mese corrente + storici in cache) per il saldo
-  const allTxFlat=[...txs,...Object.values(historyCache).flat()];
-  const entrateRealiFull=allTxFlat.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteRealiFull=allTxFlat.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiFull-usciteRealiFull;
+  // Tutte le tx ≤ oggi da tutti i mesi in cache (multi-mese)
+  const allTxStoriche=[...txs,...Object.values(historyCache).flat()].filter(t=>t.data<=td);
+  const entrateOggi=allTxStoriche.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteOggi=allTxStoriche.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateOggi-usciteOggi;
 
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
@@ -2560,10 +2560,17 @@ function renderDashboard(){
   const oggi=new Date();
   const annoCorrente=oggi.getFullYear(),meseCorrente=oggi.getMonth();
   const ultimoGiorno=new Date(annoCorrente,meseCorrente+1,0).getDate();
-  // Escludi ricorrenti già inserite: controlla sia per ricorrenteId che per data+importo
+  // Escludi ricorrenti già inserite come transazioni reali
   const txInserite=new Set(state.transactions.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
   const txPerDataImporto=new Set(state.transactions.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
   let entrateFuture=0,usciteFuture=0;
+  // Transazioni manuali già inserite con data futura (es. stipendio del 10/07)
+  const txFutureMese=txs.filter(t=>t.data>td&&t.data.startsWith(monthKey()));
+  txFutureMese.forEach(t=>{
+    if(t.tipo==='entrata'&&t.categoria!=='trasferimento') entrateFuture+=t.importo||0;
+    else if(isSpesaReale(t)) usciteFuture+=t.importo||0;
+  });
+  // Ricorrenti non ancora inserite come transazioni
   for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
     const dateStr=`${annoCorrente}-${String(meseCorrente+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     (state.ricorrenti||[]).forEach(r=>{
@@ -2685,25 +2692,32 @@ function renderDashboardClassica(){
   const txs=state.transactions,td=today();
   const mk=monthKey();
   const mkStart=mk+'-01';
-  const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const uscite=txThisMonth.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
-  // Saldo ad oggi = saldi manuali + contanti + buoni + entrate - uscite reali (NO carta)
+  const txAdOggi2=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
+  const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk));
+  const entrate=txAdOggi2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uscite=txAdOggi2.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
+  // Saldo ad oggi = saldi manuali + tx reali con data ≤ oggi (NO carta, NO future)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const allTxFlat2=[...txs,...Object.values(historyCache).flat()];
-  const entrateRealiFull2=allTxFlat2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteRealiFull2=allTxFlat2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiFull2-usciteRealiFull2;
-  // Saldo a fine mese = sOra + ricorrenti future non ancora inserite
+  const allTxStoriche2=[...txs,...Object.values(historyCache).flat()].filter(t=>t.data<=td);
+  const entrateOggi2=allTxStoriche2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteOggi2=allTxStoriche2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateOggi2-usciteOggi2;
+  // Saldo a fine mese = sOra + tx future mese + ricorrenti future
   const oggi=new Date();
   const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
   const txInserite=new Set(txs.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
   const txPerDataImporto=new Set(txs.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
   let entrateFuture=0,usciteFuture=0;
+  // Transazioni manuali con data futura
+  txs.filter(t=>t.data>td&&t.data.startsWith(mk)).forEach(t=>{
+    if(t.tipo==='entrata'&&t.categoria!=='trasferimento') entrateFuture+=t.importo||0;
+    else if(isSpesaReale(t)) usciteFuture+=t.importo||0;
+  });
+  // Ricorrenti non ancora inserite
   for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
     const dateStr=`${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     (state.ricorrenti||[]).forEach(r=>{
@@ -4388,72 +4402,37 @@ function shouldNotify(tipo){
 }
 
 let namesTimer,cartaTimer;
-
-window.repairDati=async function(){
-  const fromDate=document.getElementById('repair-from')?.value;
-  const toDate=document.getElementById('repair-to')?.value||today();
-  const log=document.getElementById('repair-log');
-  if(!fromDate){toast('Inserisci la data di inizio','err');return;}
-  if(fromDate>toDate){toast('La data di inizio deve essere prima della fine','err');return;}
-  const logLine=(msg,color='')=>{if(!log)return;log.style.display='block';log.innerHTML+=`<div style="color:${color||'var(--text)'}">${msg}</div>`;log.scrollTop=log.scrollHeight;};
-  log.style.display='block';log.innerHTML='';
-  logLine('⏳ Lettura transazioni da Firestore...','var(--muted)');
-  const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js');
-  // Calcola mesi da coprire
-  const mesi=[];
-  const cur=new Date(fromDate+'T12:00:00'),fine=new Date(toDate+'T12:00:00');
-  while(cur<=fine){const mk=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;if(!mesi.includes(mk))mesi.push(mk);cur.setMonth(cur.getMonth()+1);}
-  logLine(`📅 Mesi: ${mesi.join(', ')}','var(--muted)'`);
-  // Leggi tutte le tx
-  let tuttiTx=[];
-  for(const mk of mesi){
-    const snap=await gd(collection(db,'transactions',mk,'items'));
-    const txMk=snap.docs.map(d=>({id:d.id,mk,...d.data()}));
-    tuttiTx=tuttiTx.concat(txMk);
-    logLine(`  ✓ ${mk}: ${txMk.length} transazioni`,'var(--muted)');
-  }
-  const txRange=tuttiTx.filter(t=>t.data>=fromDate&&t.data<=toDate);
-  logLine(`📊 Nel range: ${txRange.length} transazioni`);
-  // Rimuovi duplicati
-  logLine('','');logLine('🔍 Ricerca duplicati...','var(--accent)');
-  const seen={};const daEliminare=[];
-  txRange.sort((a,b)=>(a.creato?.seconds||0)-(b.creato?.seconds||0));
-  txRange.forEach(t=>{if(!t.ricorrenteId)return;const key=`${t.ricorrenteId}_${t.data}`;if(seen[key])daEliminare.push(t);else seen[key]=t;});
-  if(!daEliminare.length){logLine('✅ Nessun duplicato trovato','var(--green)');}
-  else{
-    logLine(`🗑️ ${daEliminare.length} duplicati da rimuovere...`,'var(--red)');
-    for(const t of daEliminare){
-      try{await deleteDoc(doc(db,'transactions',t.mk,'items',t.id));logLine(`  ✓ Rimosso: ${t.desc||'?'} — ${t.data} (€${fmt(t.importo||0)})','var(--muted)'`);}
-      catch(e){logLine(`  ⚠️ Errore: ${e.message}','var(--red)'`);}
-    }
-    logLine(`✅ ${daEliminare.length} duplicati rimossi','var(--green)'`);
-  }
-  // Ricarica mese corrente + aggiorna cache storici
-  logLine('','');logLine('🔄 Ricaricamento da Firestore...','var(--accent)');
-  const mkCorrente=monthKey();
-  for(const mk of mesi){
-    const snap=await gd(collection(db,'transactions',mk,'items'));
-    const txs=snap.docs.map(d=>({id:d.id,...d.data()}));
-    if(mk===mkCorrente)state.transactions=txs;
-    historyCache[mk]=txs;
-    logLine(`  ✓ ${mk}: ${txs.length} transazioni ricaricate`,'var(--muted)');
-  }
-  // Ricalcola e ridisegna tutto
-  logLine('','');logLine('📈 Ricalcolo saldo, portafoglio, statistiche...','var(--accent)');
-  renderDashboard();
-  const activePage=document.querySelector('.page.active')?.id;
-  if(activePage)renderPage(activePage.replace('page-',''));
-  logLine('  ✓ Saldo disponibile aggiornato','var(--muted)');
-  logLine('  ✓ Portafoglio ricalcolato','var(--muted)');
-  logLine('  ✓ Statistiche e grafici aggiornati','var(--muted)');
-  logLine('','');logLine('🎉 Completato!','var(--green)');
-  toast('✅ Ricalcolo completato');
-};
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});toast('Nomi salvati ✓');},800);};
 window.saveCartaLimite=async function(immediate=false){
   clearTimeout(cartaTimer);
   const doSave=async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');};
   if(immediate)await doSave();else cartaTimer=setTimeout(doSave,800);
+};
+window.repairDati=async function(){
+  const fromDate=document.getElementById('repair-from')?.value;
+  const toDate=document.getElementById('repair-to')?.value||today();
+  const log=document.getElementById('repair-log');
+  if(!fromDate){toast('Inserisci la data di inizio','err');return;}
+  const logLine=(msg,color='')=>{if(!log)return;log.style.display='block';log.innerHTML+=`<div style="color:${color||'var(--text)'}">${msg}</div>`;log.scrollTop=log.scrollHeight;};
+  log.style.display='block';log.innerHTML='';
+  logLine('⏳ Lettura transazioni...','var(--muted)');
+  const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js');
+  const mesi=[];const cur=new Date(fromDate+'T12:00:00'),fine=new Date(toDate+'T12:00:00');
+  while(cur<=fine){const mk=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;if(!mesi.includes(mk))mesi.push(mk);cur.setMonth(cur.getMonth()+1);}
+  let tuttiTx=[];
+  for(const mk of mesi){const snap=await gd(collection(db,'transactions',mk,'items'));const txMk=snap.docs.map(d=>({id:d.id,mk,...d.data()}));tuttiTx=tuttiTx.concat(txMk);logLine(`  ✓ ${mk}: ${txMk.length} tx`,'var(--muted)');}
+  const txRange=tuttiTx.filter(t=>t.data>=fromDate&&t.data<=toDate);
+  const seen={};const daEliminare=[];
+  txRange.sort((a,b)=>(a.creato?.seconds||0)-(b.creato?.seconds||0));
+  txRange.forEach(t=>{if(!t.ricorrenteId)return;const key=`${t.ricorrenteId}_${t.data}`;if(seen[key])daEliminare.push(t);else seen[key]=t;});
+  if(!daEliminare.length){logLine('✅ Nessun duplicato','var(--green)');}
+  else{for(const t of daEliminare){try{await deleteDoc(doc(db,'transactions',t.mk,'items',t.id));logLine(`  ✓ Rimosso: ${t.desc||'?'} — ${t.data}  €${fmt(t.importo||0)}`,'var(--muted)');}catch(e){logLine(`  ⚠️ ${e.message}`,'var(--red)');}}}
+  logLine('🔄 Ricaricamento...','var(--accent)');
+  const mkCorrente=monthKey();
+  for(const mk of mesi){const snap=await gd(collection(db,'transactions',mk,'items'));const txs=snap.docs.map(d=>({id:d.id,...d.data()}));if(mk===mkCorrente)state.transactions=txs;historyCache[mk]=txs;logLine(`  ✓ ${mk}: ${txs.length} tx ricaricate`,'var(--muted)');}
+  renderDashboard();
+  const ap=document.querySelector('.page.active')?.id;if(ap)renderPage(ap.replace('page-',''));
+  logLine('🎉 Completato!','var(--green)');toast('✅ Ricalcolo completato');
 };
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function fmt(n){return Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
