@@ -1184,43 +1184,6 @@
   </div>
 </div>
 
-<!-- MODAL TRASFERIMENTO -->
-<div class="modal-overlay" id="trasferimento-modal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-title">🔀 Sposta soldi</div>
-    <div style="margin-bottom:14px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Da</label>
-      <select id="tr-da" onchange="aggiornaTrInfo()" style="font-size:14px;padding:9px 12px;width:100%">
-        <option value="contanti_io">💵 Portafoglio mio</option>
-        <option value="contanti_lei">💵 Portafoglio Ilaria</option>
-        <option value="conto">💳 Conto corrente</option>
-      </select>
-      <div id="tr-da-saldo" style="font-size:12px;color:var(--muted);margin-top:5px;text-align:right"></div>
-    </div>
-    <div style="text-align:center;font-size:20px;margin:-4px 0 10px;color:var(--muted)">↓</div>
-    <div style="margin-bottom:14px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">A</label>
-      <select id="tr-a" style="font-size:14px;padding:9px 12px;width:100%">
-        <option value="contanti_lei">💵 Portafoglio Ilaria</option>
-        <option value="contanti_io">💵 Portafoglio mio</option>
-        <option value="conto">💳 Conto corrente</option>
-      </select>
-    </div>
-    <div style="margin-bottom:14px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Importo (€)</label>
-      <input type="number" id="tr-importo" placeholder="0,00" min="0.01" step="0.01" style="font-size:18px;font-weight:600;padding:10px 14px;width:100%">
-    </div>
-    <div style="margin-bottom:14px">
-      <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:6px">Descrizione (opzionale)</label>
-      <input type="text" id="tr-desc" placeholder="es. Rimborso cena" style="font-size:14px;padding:9px 12px;width:100%">
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="document.getElementById('trasferimento-modal').classList.remove('open')">Annulla</button>
-      <button class="btn btn-primary" onclick="eseguiTrasferimento()">Sposta</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="spesa-contanti-modal">
   <div class="modal">
     <div class="modal-title">💸 Spesa con contanti</div>
@@ -1543,8 +1506,7 @@ const CATEGORIES={
     {id:'mensa_chiara',label:'Mensa Chiara',icon:'🍱',color:'#4fd89e',group:'Figli'},
     {id:'scuola_fede',label:'Spese Scolastiche Fede',icon:'📐',color:'#6c9fff',group:'Figli'},
     {id:'scuola_chiara',label:'Spese Scolastiche Chiara',icon:'📏',color:'#b48fff',group:'Figli'},
-    {id:'prelievo',label:'Prelievo bancomat',icon:'🏧',color:'#f5c842',group:'Portafoglio'},
-    {id:'trasferimento',label:'Trasferimento interno',icon:'🔀',color:'#6c9fff',group:'Portafoglio'}
+    {id:'prelievo',label:'Prelievo bancomat',icon:'🏧',color:'#f5c842',group:'Portafoglio'}
   ],
   entrata:[
     {id:'stipendio',label:'Stipendio',icon:'💼',color:'#4fd89e',group:'Lavoro'},{id:'freelance',label:'Freelance / Extra',icon:'💻',color:'#6c9fff',group:'Lavoro'},{id:'bonus',label:'Bonus / Premio',icon:'🏆',color:'#f5c842',group:'Lavoro'},{id:'mance_ila',label:'Mance Ila',icon:'💐',color:'#ff9f6b',group:'Lavoro'},
@@ -1557,10 +1519,9 @@ const ALL_CATS=[...CATEGORIES.uscita,...CATEGORIES.entrata];
 function catById(id){return ALL_CATS.find(c=>c.id===id)||{label:'Altro',icon:'📦',color:'#7a7f94'};}
 // I prelievi bancomat NON sono spese reali — sono trasferimenti interni conto→portafoglio
 // Le spese reali sono quelle che poi vengono registrate con metodo contanti
-function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo'&&t.categoria!=='trasferimento';}
-function isEntrataReale(t){return t.tipo==='entrata'&&t.categoria!=='trasferimento';}
+function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo';}
 window.populateCatSelect=function(selId,tipo){
-  const sel=document.getElementById(selId),cats=(CATEGORIES[tipo]||CATEGORIES.uscita).filter(c=>c.id!=='prelievo'&&c.id!=='trasferimento'),g={};
+  const sel=document.getElementById(selId),cats=CATEGORIES[tipo]||CATEGORIES.uscita,g={};
   cats.forEach(c=>{if(!g[c.group])g[c.group]=[];g[c.group].push(c);});
   sel.innerHTML=Object.entries(g).map(([gr,items])=>`<optgroup label="${gr}">${items.map(c=>`<option value="${c.id}">${c.icon} ${c.label}</option>`).join('')}</optgroup>`).join('');
 };
@@ -1882,7 +1843,6 @@ function listenShared(){
   onSnapshot(doc(db,'shared','liste'),snap=>{state.liste=snap.exists()?(snap.data().list||[]):[];renderPage('liste');});
   onSnapshot(doc(db,'shared','ricorrenti'),snap=>{
     state.ricorrenti=snap.exists()?(snap.data().list||[]):[];
-    renderRicorrentiDash();
     checkRicorrenti();
     renderDashboard();
     const active=document.querySelector('.page.active')?.id;
@@ -2231,12 +2191,13 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // Il portafoglio è calcolato come:
   // prelievi (categoria='prelievo') - spese con contanti (metodo='contanti_io/lei')
-  // su TUTTE le transazioni caricate (mese corrente)
+  // Compatibile con chi='1'/'2' e vecchi valori 'io'/'lei'/'entrambi'
   const txs=state.transactions;
-  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='1'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='2'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const isIo=t=>t.chi==='1'||t.chi==='io';
+  const isLei=t=>t.chi==='2'||t.chi==='lei';
+  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&isIo(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&isLei(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   return{
@@ -2278,9 +2239,6 @@ function renderPortafoglio(){
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px">🏧 <strong>Preleva</strong>: scala dal conto e aggiunge al portafoglio &nbsp;·&nbsp; 💸 <strong>Spendi</strong>: registra la spesa e scala dal portafoglio</div>
-      <div style="margin-top:10px;text-align:center">
-        <button class="btn btn-ghost" onclick="openTrasferimento()" style="font-size:13px;width:100%">🔀 Sposta soldi tra recipienti</button>
-      </div>
     </div>`;
 }
 
@@ -2313,10 +2271,7 @@ window.openPortafoglioQuick=function(){
       <div style="font-size:11px;color:var(--muted)">TOTALE CONTANTI</div>
       <div style="font-family:var(--font-mono);font-size:20px;color:var(--gold)">€${fmt(totale)}</div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">🏧 <b>Preleva</b>: scala dal conto · 💸 <b>Spendi</b>: registra spesa contanti</div>
-    <div style="margin-top:10px">
-      <button class="btn btn-ghost" onclick="document.getElementById('portafoglio-quick-modal').classList.remove('open');openTrasferimento()" style="font-size:13px;width:100%">🔀 Sposta soldi</button>
-    </div>`;
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6">🏧 <b>Preleva</b>: scala dal conto · 💸 <b>Spendi</b>: registra spesa contanti</div>`;
   document.getElementById('portafoglio-quick-modal').classList.add('open');
 };
 
@@ -2334,70 +2289,6 @@ window.pqPreleva=async function(chi){
 window.pqSpendi=function(chi){
   document.getElementById('portafoglio-quick-modal').classList.remove('open');
   apriSpesaContanti(chi);
-};
-
-window.openTrasferimento=function(){
-  aggiornaTrInfo();
-  document.getElementById('tr-importo').value='';
-  document.getElementById('tr-desc').value='';
-  document.getElementById('trasferimento-modal').classList.add('open');
-};
-
-window.aggiornaTrInfo=function(){
-  const da=document.getElementById('tr-da')?.value;
-  const p=calcolaPortafoglio();
-  const names=state.settings.names||['Io','Ilaria'];
-  let saldo='';
-  if(da==='contanti_io') saldo=`Disponibile: €${fmt(p.io||0)}`;
-  else if(da==='contanti_lei') saldo=`Disponibile: €${fmt(p.lei||0)}`;
-  else saldo='Dal conto corrente';
-  const el=document.getElementById('tr-da-saldo');
-  if(el)el.textContent=saldo;
-  // Aggiorna opzioni "A" escludendo la stessa fonte
-  const selA=document.getElementById('tr-a');
-  if(!selA)return;
-  const opts=[
-    {value:'contanti_io',label:`💵 Portafoglio ${names[0]||'mio'}`},
-    {value:'contanti_lei',label:`💵 Portafoglio ${names[1]||'Ilaria'}`},
-    {value:'conto',label:'💳 Conto corrente'},
-  ];
-  const prev=selA.value;
-  selA.innerHTML=opts.filter(o=>o.value!==da).map(o=>`<option value="${o.value}">${o.label}</option>`).join('');
-  if(prev&&prev!==da)selA.value=prev;
-};
-
-window.eseguiTrasferimento=async function(){
-  const da=document.getElementById('tr-da').value;
-  const a=document.getElementById('tr-a').value;
-  const importo=parseFloat(document.getElementById('tr-importo').value);
-  const descCustom=document.getElementById('tr-desc').value.trim();
-  const names=state.settings.names||['Io','Ilaria'];
-  if(!importo||importo<=0){toast('Inserisci un importo valido','err');return;}
-  if(da===a){toast('Fonte e destinazione sono uguali','err');return;}
-
-  // Verifica disponibilità se si parte da un portafoglio
-  const p=calcolaPortafoglio();
-  if(da==='contanti_io'&&(p.io||0)<importo){toast(`Portafoglio ${names[0]||'tuo'} insufficiente (€${fmt(p.io||0)})`,  'err');return;}
-  if(da==='contanti_lei'&&(p.lei||0)<importo){toast(`Portafoglio ${names[1]||'Ilaria'} insufficiente (€${fmt(p.lei||0)})`,'err');return;}
-
-  const labelDa=da==='conto'?'Conto':da==='contanti_io'?`Portafoglio ${names[0]||'mio'}`:`Portafoglio ${names[1]||'Ilaria'}`;
-  const labelA=a==='conto'?'Conto':a==='contanti_io'?`Portafoglio ${names[0]||'mio'}`:`Portafoglio ${names[1]||'Ilaria'}`;
-  const desc=descCustom||`Trasferimento ${labelDa} → ${labelA}`;
-  const td=today();
-
-  // Determina chi è coinvolto
-  const chiDa=da==='contanti_lei'?'2':'1';
-  const chiA=a==='contanti_lei'?'2':'1';
-
-  // Crea le due transazioni speculari con categoria 'trasferimento'
-  // USCITA dalla fonte
-  await addTx({tipo:'uscita',importo,desc,categoria:'trasferimento',data:td,metodo:da,chi:chiDa,note:'Trasferimento interno'});
-  // ENTRATA nella destinazione
-  await addTx({tipo:'entrata',importo,desc,categoria:'trasferimento',data:td,metodo:a,chi:chiA,note:'Trasferimento interno'});
-
-  document.getElementById('trasferimento-modal').classList.remove('open');
-  toast(`🔀 €${fmt(importo)} spostati da ${labelDa} a ${labelA} ✓`);
-  renderDashboard();
 };
 window.aggiungiContanti=async function(chi){
   const input=document.getElementById(`pf-${chi}-add`);
@@ -2490,7 +2381,7 @@ window.drillDown=function(tipo,filtro,label,soloOggi=false){
         if(shouldInsert(r,dateStr)) future.push({...r,data:dateStr});
       });
     }
-    const entratePass=passate.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+    const entratePass=passate.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
     const uscitePass=passate.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
     const entrateFut=future.filter(r=>r.tipo==='entrata').reduce((a,r)=>a+r.importo,0);
     const usciteFut=future.filter(r=>r.tipo!=='entrata').reduce((a,r)=>a+r.importo,0);
@@ -2614,18 +2505,23 @@ function renderDashboard(){
   const txs=state.transactions,td=today();
   const mkStart=monthKey()+'-01';
   const txThisMonth=txs.filter(t=>t.data>=mkStart&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+  const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const eAll=txs.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
-  const uAll=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
 
   // SALDO DISPONIBILE = Conti correnti + Portafogli contanti + Buoni pasto residui
+  // +/- le transazioni del mese corrente (entrate reali - uscite reali)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
-  const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0); // somma netta (positivi - negativi)
+  const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const sOra=totaleConti+totaleContanti+totaleBuoni;
+  // Tutte le tx del mese fino ad oggi (non solo quelle filtrate)
+  const allTxMese=txs.filter(t=>t.data>=mkStart&&t.data<=td);
+  const entrateRealiMese=allTxMese.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteRealiMese=allTxMese.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiMese-usciteRealiMese;
 
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
@@ -2773,13 +2669,18 @@ function renderDashboardClassica(){
   const mk=monthKey();
   const mkStart=mk+'-01';
   const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+  const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  // Saldo ad oggi = patrimonio reale (conti + contanti + buoni) +/- tx mese
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const sOra=totaleConti+totaleContanti+totaleBuoni;
+  const allTxMese=txs.filter(t=>t.data>=mkStart&&t.data<=td);
+  const entrateRealiMese=allTxMese.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteRealiMese=allTxMese.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiMese-usciteRealiMese;
   // Saldo a fine mese = sOra + ricorrenti future non ancora inserite
   const oggi=new Date();
   const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
@@ -3369,9 +3270,19 @@ function renderRicorrentiDash(){
   const entrate=active.filter(r=>r.tipo==='entrata');
   const totUscite=uscite.reduce((a,r)=>a+r.importo*(freqMultiplier[r.frequenza]||1),0);
   const totEntrate=entrate.reduce((a,r)=>a+r.importo*(freqMultiplier[r.frequenza]||1),0);
-  // Per categoria (solo uscite nelle barre)
+  // Per categoria (solo uscite nelle barre) — escludi quanto già inserito come transazione reale
+  const mk=monthKey();
+  const txMese=state.transactions.filter(t=>t.data&&t.data.startsWith(mk)&&isSpesaReale(t)&&t.ricorrenteId);
+  const giàInserito={};
+  txMese.forEach(t=>{giàInserito[t.categoria]=(giàInserito[t.categoria]||0)+t.importo;});
   const bycat={};
-  uscite.forEach(r=>{const mult=freqMultiplier[r.frequenza]||1;bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo*mult;});
+  uscite.forEach(r=>{
+    const mult=freqMultiplier[r.frequenza]||1;
+    const stimato=r.importo*mult;
+    const inserito=giàInserito[r.categoria]||0;
+    // Mostra la stima mensile, ma se già inserito nel mese usa il reale
+    bycat[r.categoria]=(bycat[r.categoria]||0)+Math.max(stimato,0);
+  });
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   el.innerHTML=
     `<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
@@ -3588,7 +3499,7 @@ async function renderStorico(){
     while(m<0){m+=12;y--;}
     const mk=`${y}-${String(m+1).padStart(2,'0')}`;
     const txs=i===0?state.transactions:(history[mk]||[]);
-    const entrate=txs.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+    const entrate=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
     const uscite=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
     months.push({mk,m,y,txs,entrate,uscite,saldo:entrate-uscite});
   }
@@ -3767,7 +3678,7 @@ async function renderPrevisionale(){
     : 0;
 
   // Saldo attuale
-  const saldoOra=state.transactions.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0)
+  const saldoOra=state.transactions.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0)
     -state.transactions.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
 
   // ===== 1. SALDO PROSSIMI 3 MESI =====
@@ -4145,7 +4056,7 @@ async function renderGrafici(){
     let m=viewMonth-i,y=viewYear;while(m<0){m+=12;y--;}
     const mk=`${y}-${String(m+1).padStart(2,'0')}`;
     const txs=i===0?state.transactions:(history[mk]||[]);
-    const e=txs.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+    const e=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
     const u=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
     cumS+=e-u;labels.push(`${MN[m]} ${y}`);eD.push(+e.toFixed(2));uD.push(+u.toFixed(2));sD.push(+cumS.toFixed(2));
   }
@@ -4200,7 +4111,7 @@ function renderReport(){
     // Usa tutte le transazioni del DB (mese corrente caricato)
     // Per range multi-mese mostriamo quello che abbiamo in cache
     const txs=state.transactions.filter(t=>t.data>=from&&t.data<=to);
-    const entrate=txs.filter(t=>isEntrataReale(t)).reduce((a,t)=>a+t.importo,0);
+    const entrate=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
     const uscite=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
     const saldo=entrate-uscite;
     const conto=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='conto').reduce((a,t)=>a+t.importo,0);
@@ -4277,8 +4188,8 @@ function renderFamiglia(){
   const txs=state.transactions;
   const u1=txs.filter(t=>t.tipo==='uscita'&&t.chi==='1').reduce((a,t)=>a+t.importo,0);
   const u2=txs.filter(t=>t.tipo==='uscita'&&t.chi==='2').reduce((a,t)=>a+t.importo,0);
-  const e1=txs.filter(t=>isEntrataReale(t)&&t.chi==='1').reduce((a,t)=>a+t.importo,0);
-  const e2=txs.filter(t=>isEntrataReale(t)&&t.chi==='2').reduce((a,t)=>a+t.importo,0);
+  const e1=txs.filter(t=>t.tipo==='entrata'&&t.chi==='1').reduce((a,t)=>a+t.importo,0);
+  const e2=txs.filter(t=>t.tipo==='entrata'&&t.chi==='2').reduce((a,t)=>a+t.importo,0);
   el.innerHTML=`
     <div class="card"><div class="card-title">👨‍👩‍👦 Situazione del mese</div>
       <div class="family-member-card"><div class="family-avatar">👤</div><div style="flex:1"><div style="font-size:16px;font-weight:600">${names[0]||'Persona 1'}</div><div style="font-size:13px;color:var(--green)">Entrate: €${fmt(e1)}</div><div style="font-size:13px;color:var(--red)">Uscite: €${fmt(u1)}</div></div></div>
