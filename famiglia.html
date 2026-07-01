@@ -1918,11 +1918,25 @@ async function fetchHistoryMonths(num=5){
 
 // ===== RICORRENTI AUTO =====
 function checkRicorrenti(){
-  const td=today(),proc=JSON.parse(localStorage.getItem('cn_proc')||'{}');
+  const td=today();
+  // Fonte di verità: le transazioni già su Firestore (state.transactions)
+  // NON il localStorage che è per-dispositivo e causa duplicati
+  const txInserite=new Set(
+    state.transactions
+      .filter(t=>t.ricorrenteId)
+      .map(t=>`${t.ricorrenteId}_${t.data}`)
+  );
   state.ricorrenti.forEach(async r=>{
-    const key=`${r.id}_${monthKey()}`;if(proc[key])return;if(!shouldInsert(r,td))return;
-    proc[key]=true;localStorage.setItem('cn_proc',JSON.stringify(proc));
-    await addTx({tipo:r.tipo,importo:r.importo,desc:r.desc+' (auto)',categoria:r.categoria,data:td,metodo:r.metodo||'conto',chi:r.chi||'entrambi',note:'Ricorrente automatica',ricorrenteId:r.id});
+    if(!shouldInsert(r,td))return;
+    // Già inserita oggi per questa ricorrente? (controllo su Firestore)
+    if(txInserite.has(`${r.id}_${td}`))return;
+    // Marca subito nel Set locale per evitare doppie chiamate nella stessa sessione
+    txInserite.add(`${r.id}_${td}`);
+    await addTx({
+      tipo:r.tipo,importo:r.importo,desc:r.desc+' (auto)',
+      categoria:r.categoria,data:td,metodo:r.metodo||'conto',
+      chi:r.chi||'entrambi',note:'Ricorrente automatica',ricorrenteId:r.id
+    });
     toast(`✓ Inserita: ${r.desc}`);
   });
 }
@@ -2192,7 +2206,6 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // prelievi - spese contanti, compatibile con chi='1'/'io' e '2'/'lei'
   const txs=state.transactions;
   const isIo=t=>t.chi==='1'||t.chi==='io';
   const isLei=t=>t.chi==='2'||t.chi==='lei';
@@ -2510,8 +2523,7 @@ function renderDashboard(){
   const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
 
-  // SALDO DISPONIBILE = Conti correnti + Portafogli contanti + Buoni pasto residui
-  // +/- le transazioni del mese corrente
+  // SALDO DISPONIBILE = Conti correnti + Portafogli contanti + Buoni +/- tx mese
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
@@ -2670,7 +2682,7 @@ function renderDashboardClassica(){
   const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
   const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  // Saldo ad oggi = patrimonio reale (conti + contanti + buoni) +/- tx mese
+  // Saldo ad oggi = patrimonio reale +/- tx mese
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
@@ -4373,13 +4385,8 @@ let namesTimer,cartaTimer;
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});toast('Nomi salvati ✓');},800);};
 window.saveCartaLimite=async function(immediate=false){
   clearTimeout(cartaTimer);
-  const doSave=async()=>{
-    const v=parseFloat(document.getElementById('carta-limite').value)||0;
-    await saveShared('settings',{...state.settings,cartaLimite:v});
-    toast('Limite carta salvato ✓');
-  };
-  if(immediate)await doSave();
-  else cartaTimer=setTimeout(doSave,800);
+  const doSave=async()=>{const v=parseFloat(document.getElementById('carta-limite').value)||0;await saveShared('settings',{...state.settings,cartaLimite:v});toast('Limite carta salvato ✓');};
+  if(immediate)await doSave();else cartaTimer=setTimeout(doSave,800);
 };
 function uid(){return Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function fmt(n){return Number(n).toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
