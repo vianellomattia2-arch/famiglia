@@ -234,7 +234,7 @@
   main{padding:10px;max-width:900px;margin:0 auto;}
   .page{display:none;}.page.active{display:block;}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 15px;margin-bottom:10px;}
-  .giochi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .giochi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;}
   .gioco-card{text-align:center;cursor:pointer;transition:transform .15s,border-color .15s;}
   .gioco-card:hover{transform:translateY(-2px);border-color:var(--accent);}
   .gioco-card:active{transform:translateY(0);}
@@ -851,6 +851,12 @@
           <div class="card-title">Snake</div>
           <div class="sub">Il classico, mangia e cresci senza toccarti</div>
           <div class="gioco-best" id="best-snake"></div>
+        </div>
+        <div class="card gioco-card" onclick="apriGioco('arkanoid')">
+          <div class="gioco-emoji">🧱</div>
+          <div class="card-title">Rompimattoni</div>
+          <div class="sub">Non far cadere la pallina, spacca tutti i mattoncini</div>
+          <div class="gioco-best" id="best-arkanoid"></div>
         </div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -1630,7 +1636,7 @@ window.populateCatSelect=function(selId,tipo){
 };
 
 // ===== STATE =====
-let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[],giochi:{monete:{io:0,lei:0},snake:{io:0,lei:0}}};
+let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[],giochi:{monete:{io:0,lei:0},snake:{io:0,lei:0},arkanoid:{io:0,lei:0}}};
 let isChildMode=false,pinTarget='adult',charts={};
 
 // ===== PROFILI — Firestore-backed =====
@@ -1959,7 +1965,7 @@ function listenShared(){
   // Re-render dashboard dopo 2s per assicurarsi che tutti i dati siano caricati
   setTimeout(()=>renderDashboard(),2000);
   onSnapshot(doc(db,'shared','note'),snap=>{state.note=snap.exists()?(snap.data().list||[]):[];renderPage('note');});
-  onSnapshot(doc(db,'shared','giochi'),snap=>{state.giochi=snap.exists()?snap.data():{monete:{io:0,lei:0},snake:{io:0,lei:0}};renderPage('giochi');});
+  onSnapshot(doc(db,'shared','giochi'),snap=>{state.giochi=snap.exists()?snap.data():{monete:{io:0,lei:0},snake:{io:0,lei:0},arkanoid:{io:0,lei:0}};renderPage('giochi');});
   onSnapshot(collection(db,'note_private'),snap=>{state.notePrivate=snap.docs.map(d=>({id:d.id,...d.data()})).filter(n=>n.autore===sessionStorage.getItem('cn_profile_name'));renderPage('note');});
   onSnapshot(doc(db,'shared','portafoglio'),snap=>{state.portafoglio=snap.exists()?snap.data():{io:0,lei:0};renderPortafoglio();});
   // Ascolta notifiche — ignora quelle già esistenti al caricamento
@@ -4771,7 +4777,7 @@ window.saveDisegno=async function(){
 };
 
 // ===== GIOCHI =====
-let activeChi=null,currentGame=null,gameLoopId=null,keyHandlerSnake=null;
+let activeChi=null,currentGame=null,gameLoopId=null,keyHandlerSnake=null,keyHandlerArkanoid=null,keyUpHandlerArkanoid=null;
 
 function determinaChi(){
   const pn=(sessionStorage.getItem('cn_profile_name')||'').trim().toLowerCase();
@@ -4782,17 +4788,21 @@ function determinaChi(){
 }
 
 window.renderGiochiHub=function(){
-  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0}};
+  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0},arkanoid:{io:0,lei:0}};
   const n=state.settings.names||['Matti','Ilaria'];
   const bm=document.getElementById('best-monete');
   if(bm)bm.innerHTML=`🏆 ${Math.max(g.monete?.io||0,g.monete?.lei||0)} pt`;
   const bs=document.getElementById('best-snake');
   if(bs)bs.innerHTML=`🏆 ${Math.max(g.snake?.io||0,g.snake?.lei||0)} pt`;
+  const ba=document.getElementById('best-arkanoid');
+  if(ba)ba.innerHTML=`🏆 ${Math.max(g.arkanoid?.io||0,g.arkanoid?.lei||0)} pt`;
   const rows=[
     {label:'🪙 Monete · '+(n[0]||'Matti'),val:g.monete?.io||0},
     {label:'🪙 Monete · '+(n[1]||'Ilaria'),val:g.monete?.lei||0},
     {label:'🐍 Snake · '+(n[0]||'Matti'),val:g.snake?.io||0},
     {label:'🐍 Snake · '+(n[1]||'Ilaria'),val:g.snake?.lei||0},
+    {label:'🧱 Rompimattoni · '+(n[0]||'Matti'),val:g.arkanoid?.io||0},
+    {label:'🧱 Rompimattoni · '+(n[1]||'Ilaria'),val:g.arkanoid?.lei||0},
   ].sort((a,b)=>b.val-a.val);
   const box=document.getElementById('giochi-classifica');
   if(box)box.innerHTML=rows.map(r=>`<div class="giochi-lb-row"><span class="gname">${r.label}</span><span class="gscore">${r.val} pt</span></div>`).join('')||'<div class="sub">Ancora nessun punteggio</div>';
@@ -4802,6 +4812,8 @@ function fermaGioco(){
   if(gameLoopId)cancelAnimationFrame(gameLoopId);
   gameLoopId=null;
   if(keyHandlerSnake){window.removeEventListener('keydown',keyHandlerSnake);keyHandlerSnake=null;}
+  if(keyHandlerArkanoid){window.removeEventListener('keydown',keyHandlerArkanoid);keyHandlerArkanoid=null;}
+  if(keyUpHandlerArkanoid){window.removeEventListener('keyup',keyUpHandlerArkanoid);keyUpHandlerArkanoid=null;}
   const canvas=document.getElementById('gioco-canvas');
   if(canvas){const c2=canvas.cloneNode(true);canvas.parentNode.replaceChild(c2,canvas);}
 }
@@ -4822,7 +4834,8 @@ window.apriGioco=function(game){
   currentGame=game;
   document.getElementById('giochi-hub').style.display='none';
   document.getElementById('giochi-play').style.display='block';
-  document.getElementById('gioco-titolo').textContent=game==='monete'?'🪙 Acchiappa le Monete':'🐍 Snake';
+  const titoli={monete:'🪙 Acchiappa le Monete',snake:'🐍 Snake',arkanoid:'🧱 Rompimattoni'};
+  document.getElementById('gioco-titolo').textContent=titoli[game]||'';
   document.getElementById('gioco-overlay').innerHTML='';
   const auto=determinaChi();
   if(auto){activeChi=auto;avviaGioco(game);}
@@ -4839,10 +4852,11 @@ function avviaGioco(game){
   fermaGioco();
   if(game==='monete')avviaMonete();
   if(game==='snake')avviaSnake();
+  if(game==='arkanoid')avviaArkanoid();
 }
 
 async function registraPunteggio(game,punteggio){
-  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0}};
+  const g=state.giochi||{monete:{io:0,lei:0},snake:{io:0,lei:0},arkanoid:{io:0,lei:0}};
   const cur=g[game]?.[activeChi]||0;
   if(punteggio>cur){
     const nuovo={...g,[game]:{...(g[game]||{io:0,lei:0}),[activeChi]:punteggio}};
@@ -5001,6 +5015,141 @@ function avviaSnake(){
 }
 
 document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+
+// --- Gioco 3: Rompimattoni (Arkanoid) ---
+function avviaArkanoid(){
+  const canvas=document.getElementById('gioco-canvas');
+  const ctx=canvas.getContext('2d');
+  canvas.width=360;canvas.height=480;
+  const hud=document.getElementById('gioco-hud');
+  const controls=document.getElementById('gioco-controls');
+  controls.innerHTML=`<button class="gioco-ctrl-btn" id="ark-left">◀</button> <button class="gioco-ctrl-btn" id="ark-right">▶</button>`;
+  const cs=getComputedStyle(document.documentElement);
+  const rowColors=[
+    cs.getPropertyValue('--red')||'#ff7a87',
+    cs.getPropertyValue('--gold')||'#ffd44e',
+    cs.getPropertyValue('--green')||'#5ee8aa',
+    cs.getPropertyValue('--accent')||'#7aabff',
+  ];
+
+  const paddleW0=70,paddleH=12;
+  let paddleW=paddleW0,paddleX=canvas.width/2-paddleW0/2;
+  const paddleY=canvas.height-26;
+  let ballX=canvas.width/2,ballY=paddleY-10,ballR=6;
+  let ballVX=3,ballVY=-3.4;
+  let score=0,vite=3,livello=1,running=true,launched=false;
+  let movingLeft=false,movingRight=false;
+
+  const cols=8,rowsN=4,brickPad=4,brickTop=46;
+  const brickW=(canvas.width-brickPad*(cols+1))/cols;
+  const brickH=18;
+  let bricks=[];
+  function creaMattoni(){
+    bricks=[];
+    for(let r=0;r<rowsN;r++){
+      for(let c=0;c<cols;c++){
+        bricks.push({x:brickPad+c*(brickW+brickPad),y:brickTop+r*(brickH+brickPad),w:brickW,h:brickH,alive:true,color:rowColors[r%rowColors.length]});
+      }
+    }
+  }
+  creaMattoni();
+
+  function resetPallina(){
+    launched=false;
+    paddleW=paddleW0;
+    paddleX=canvas.width/2-paddleW/2;
+    ballX=canvas.width/2;ballY=paddleY-ballR-2;
+    ballVX=3*(Math.random()<0.5?-1:1);ballVY=-3.4;
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    bricks.forEach(b=>{if(b.alive){ctx.fillStyle=b.color;ctx.fillRect(b.x,b.y,b.w,b.h);}});
+    ctx.fillStyle=cs.getPropertyValue('--accent')||'#7aabff';
+    ctx.fillRect(paddleX,paddleY,paddleW,paddleH);
+    ctx.beginPath();
+    ctx.arc(ballX,ballY,ballR,0,Math.PI*2);
+    ctx.fillStyle=cs.getPropertyValue('--text')||'#fff';
+    ctx.fill();
+  }
+  function update(){
+    if(movingLeft)paddleX-=6;
+    if(movingRight)paddleX+=6;
+    paddleX=Math.max(0,Math.min(canvas.width-paddleW,paddleX));
+    if(!launched){
+      ballX=paddleX+paddleW/2;
+      return;
+    }
+    ballX+=ballVX;ballY+=ballVY;
+    if(ballX<ballR||ballX>canvas.width-ballR)ballVX*=-1;
+    if(ballY<ballR)ballVY*=-1;
+    if(ballY+ballR>=paddleY&&ballY+ballR<=paddleY+paddleH+6&&ballX>paddleX&&ballX<paddleX+paddleW&&ballVY>0){
+      const rel=(ballX-(paddleX+paddleW/2))/(paddleW/2);
+      ballVY=-Math.abs(ballVY);
+      ballVX=rel*4.2;
+    }
+    bricks.forEach(b=>{
+      if(!b.alive)return;
+      if(ballX>b.x&&ballX<b.x+b.w&&ballY-ballR<b.y+b.h&&ballY+ballR>b.y){
+        b.alive=false;score+=10;ballVY*=-1;
+      }
+    });
+    if(ballY>canvas.height+20){
+      vite--;
+      if(vite<=0){fineArkanoid();return;}
+      resetPallina();
+    }
+    if(bricks.every(b=>!b.alive)){
+      livello++;score+=50;
+      ballVX*=1.15;ballVY*=1.15;
+      creaMattoni();
+      resetPallina();
+    }
+    hud.innerHTML=`<div>🧱 ${score} pt</div><div>${'❤️'.repeat(Math.max(0,vite))}</div><div>Livello ${livello}</div>`;
+  }
+  function loop(){
+    if(!running)return;
+    update();draw();
+    gameLoopId=requestAnimationFrame(loop);
+  }
+  async function fineArkanoid(){
+    running=false;
+    const record=await registraPunteggio('arkanoid',score);
+    document.getElementById('gioco-overlay').innerHTML=`
+      <div style="font-size:16px;margin-bottom:6px">${record?'🎉 Nuovo record!':'Game over'}</div>
+      <div style="font-family:var(--font-mono);margin-bottom:10px">Punteggio: ${score} pt · Livello ${livello}</div>
+      <button class="btn btn-primary btn-sm" onclick="apriGioco('arkanoid')">🔁 Rigioca</button>`;
+  }
+  function lancia(){if(!launched)launched=true;}
+  canvas.addEventListener('pointerdown',lancia);
+  canvas.addEventListener('pointermove',e=>{
+    const rect=canvas.getBoundingClientRect();
+    const scale=canvas.width/rect.width;
+    paddleX=(e.clientX-rect.left)*scale-paddleW/2;
+  });
+  const bl=document.getElementById('ark-left'),br=document.getElementById('ark-right');
+  bl.addEventListener('pointerdown',()=>{movingLeft=true;lancia();});
+  bl.addEventListener('pointerup',()=>movingLeft=false);
+  bl.addEventListener('pointerleave',()=>movingLeft=false);
+  br.addEventListener('pointerdown',()=>{movingRight=true;lancia();});
+  br.addEventListener('pointerup',()=>movingRight=false);
+  br.addEventListener('pointerleave',()=>movingRight=false);
+  keyHandlerArkanoid=(e)=>{
+    if(e.key==='ArrowLeft')movingLeft=true;
+    else if(e.key==='ArrowRight')movingRight=true;
+    else if(e.key===' ')lancia();
+  };
+  window.addEventListener('keydown',keyHandlerArkanoid);
+  keyUpHandlerArkanoid=(e)=>{
+    if(e.key==='ArrowLeft')movingLeft=false;
+    if(e.key==='ArrowRight')movingRight=false;
+  };
+  window.addEventListener('keyup',keyUpHandlerArkanoid);
+  document.getElementById('gioco-overlay').innerHTML=`<div style="font-size:12px;color:var(--muted)">Tocca lo schermo o premi Spazio per lanciare la pallina</div>`;
+  hud.innerHTML=`<div>🧱 0 pt</div><div>❤️❤️❤️</div><div>Livello 1</div>`;
+  draw();
+  gameLoopId=requestAnimationFrame(loop);
+}
 
 </script>
 </body>
