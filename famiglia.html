@@ -893,7 +893,7 @@
     <div class="section-header"><div class="section-title">Saldi conti</div><button class="btn btn-primary btn-sm" onclick="openSaldoModal()">+ Conto</button></div>
     <div class="conto-grid" id="conto-grid"></div>
     <div class="card"><div class="card-title">Aggiorna saldo</div><div id="saldi-list"></div></div>
-    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile si aggiorna automaticamente con le transazioni successive: entrate aggiunte, uscite reali sottratte (carta esclusa). Aggiorna periodicamente per mantenere tutto allineato.</div>
+    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile si aggiorna automaticamente: entrate aggiunte, uscite reali sottratte (carta esclusa). Aggiorna periodicamente per mantenere tutto allineato.</div>
   </div>
 
   <!-- REPORT -->
@@ -2225,10 +2225,7 @@ function calcolaPortafoglio(){
   const entrateLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  return{
-    io:Math.max(0,Math.round((prelIo+entrateIo-speseIo)*100)/100),
-    lei:Math.max(0,Math.round((prelLei+entrateLei-speseLei)*100)/100)
-  };
+  return{io:Math.max(0,Math.round((prelIo+entrateIo-speseIo)*100)/100),lei:Math.max(0,Math.round((prelLei+entrateLei-speseLei)*100)/100)};
 }
 function renderPortafoglio(){
   const wrap=document.getElementById('portafoglio-wrap');if(!wrap)return;
@@ -2557,7 +2554,6 @@ function renderDashboard(){
   if(hs){
     const refLabel=saldoReale.dataRef?`base ${formatDate(saldoReale.dataRef)}`:'saldo manuale';
     hs.textContent=`🏦 €${fmt(saldoReale.totaleBase||totaleConti)} (${refLabel}) · 💵 €${fmt(totaleContanti)} · 🎟️ €${fmt(totaleBuoni)}`;
-    hs.title=`Dal ${saldoReale.dataRef||'—'}: +€${fmt(saldoReale.entrateDopoRef||0)} entrate, -€${fmt(saldoReale.usciteDopoRef||0)} uscite`;
   }
   const he=document.getElementById('dash-hero-entrate');if(he)he.textContent=`+€${fmt(entrate)}`;
   const hu=document.getElementById('dash-hero-uscite');if(hu)hu.textContent=`-€${fmt(uscite)}`;
@@ -2650,20 +2646,17 @@ function renderDashboard(){
   const mk=monthKey();
   const txsMese=txs.filter(t=>t.data&&t.data.startsWith(mk));
   const bycat={};
-  // 1. Transazioni già inserite (tutte, anche con data futura)
   txsMese.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
-  // 2. Ricorrenti del mese non ancora inserite come transazioni
-  const txInseriteMk=new Set(txsMese.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
-  const txPerDataImportoCat=new Set(txsMese.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
-  const oggi=new Date();
-  const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
-  for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
-    const dateStr=`${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+  const txInseriteCat=new Set(txsMese.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
+  const txPDICat=new Set(txsMese.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
+  const oggiCat=new Date(),ulGCat=new Date(oggiCat.getFullYear(),oggiCat.getMonth()+1,0).getDate();
+  for(let g=oggiCat.getDate()+1;g<=ulGCat;g++){
+    const ds=`${oggiCat.getFullYear()}-${String(oggiCat.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     (state.ricorrenti||[]).forEach(r=>{
       if(!r.inizio||r.tipo==='entrata')return;
-      if(txInseriteMk.has(`${r.id}_${dateStr}`))return;
-      if(txPerDataImportoCat.has(`${dateStr}_${r.importo}_${r.categoria}`))return;
-      if(shouldInsert(r,dateStr))bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo;
+      if(txInseriteCat.has(`${r.id}_${ds}`))return;
+      if(txPDICat.has(`${ds}_${r.importo}_${r.categoria}`))return;
+      if(shouldInsert(r,ds))bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo;
     });
   }
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
@@ -2760,18 +2753,16 @@ function renderDashboardClassica(){
   if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid" style="margin-bottom:10px"><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div></div><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Disponibile</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div></div></div>`;}else cw.innerHTML='';
   renderPortafoglio();renderReminders();checkAnomalieQuick();renderRicorrentiDash();
   const bycat={};
-  // Tx inserite tutto il mese (anche future)
   txs.filter(t=>t.data&&t.data.startsWith(mk)&&isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
-  // Ricorrenti future non ancora inserite
-  const txInsMk=new Set(txs.filter(t=>t.ricorrenteId&&t.data.startsWith(mk)).map(t=>`${t.ricorrenteId}_${t.data}`));
-  const txPDI=new Set(txs.filter(t=>t.data.startsWith(mk)).map(t=>`${t.data}_${t.importo}_${t.categoria}`));
-  const oggiC=new Date(),ulGC=new Date(oggiC.getFullYear(),oggiC.getMonth()+1,0).getDate();
-  for(let g=oggiC.getDate()+1;g<=ulGC;g++){
-    const ds=`${oggiC.getFullYear()}-${String(oggiC.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+  const txInsMkC=new Set(txs.filter(t=>t.ricorrenteId&&t.data.startsWith(mk)).map(t=>`${t.ricorrenteId}_${t.data}`));
+  const txPDIC=new Set(txs.filter(t=>t.data.startsWith(mk)).map(t=>`${t.data}_${t.importo}_${t.categoria}`));
+  const oggiBC=new Date(),ulGBC=new Date(oggiBC.getFullYear(),oggiBC.getMonth()+1,0).getDate();
+  for(let g=oggiBC.getDate()+1;g<=ulGBC;g++){
+    const ds=`${oggiBC.getFullYear()}-${String(oggiBC.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
     (state.ricorrenti||[]).forEach(r=>{
       if(!r.inizio||r.tipo==='entrata')return;
-      if(txInsMk.has(`${r.id}_${ds}`))return;
-      if(txPDI.has(`${ds}_${r.importo}_${r.categoria}`))return;
+      if(txInsMkC.has(`${r.id}_${ds}`))return;
+      if(txPDIC.has(`${ds}_${r.importo}_${r.categoria}`))return;
       if(shouldInsert(r,ds))bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo;
     });
   }
@@ -2813,8 +2804,8 @@ function populateCatFilter(){
 }
 function renderTxList(){
   populateCatFilter();
-  const mk=monthKey();
-  const txs=state.transactions.filter(t=>t.data&&t.data.startsWith(mk));
+  const mkTx=monthKey();
+  const txs=state.transactions.filter(t=>t.data&&t.data.startsWith(mkTx));
   const catFilter=document.getElementById('filter-cat')?.value||'';
   const chiFilter=document.getElementById('filter-chi')?.value||'';
   const dateFrom=document.getElementById('filter-date-from')?.value||'';
@@ -4127,7 +4118,7 @@ function renderSaldi(){
 }
 window.openSaldoModal=function(){['saldo-name','saldo-emoji'].forEach(id=>document.getElementById(id).value='');document.getElementById('saldo-amount').value='';document.getElementById('saldo-modal').classList.add('open');};
 window.saveSaldo=async function(){const name=document.getElementById('saldo-name').value.trim(),amount=parseFloat(document.getElementById('saldo-amount').value)||0;if(!name){toast('Dai un nome al conto','err');return;}await saveShared('saldi',{list:[...state.saldi,{id:uid(),name,amount,emoji:document.getElementById('saldo-emoji').value.trim()||'🏦',updated:today()}]});document.getElementById('saldo-modal').classList.remove('open');toast('Conto aggiunto ✓');};
-window.updateSaldo=async function(id){const val=parseFloat(document.getElementById('upd-'+id).value)||0;await saveShared('saldi',{list:state.saldi.map(s=>s.id===id?{...s,amount:val,updated:today()}:s)});toast('Saldo aggiornato ✓ — le transazioni future aggiorneranno il saldo automaticamente');};
+window.updateSaldo=async function(id){const val=parseFloat(document.getElementById('upd-'+id).value)||0;await saveShared('saldi',{list:state.saldi.map(s=>s.id===id?{...s,amount:val,updated:today()}:s)});toast('Saldo aggiornato ✓ — le transazioni successive aggiorneranno il saldo automaticamente');};
 window.deleteSaldo=async function(id){if(!confirm('Eliminare?'))return;await saveShared('saldi',{list:state.saldi.filter(s=>s.id!==id)});toast('Conto eliminato');};
 
 // ===== REPORT =====
