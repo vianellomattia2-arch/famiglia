@@ -1026,6 +1026,19 @@
         <div style="margin-top:14px"><button class="btn btn-ghost btn-sm" onclick="saveNotifPrefs()">Salva preferenze</button></div>
       </div>
       <div class="tip"><div class="tip-header">☁️ Privacy & Dati</div>Tutti i dati finanziari sono su Firebase (Milano), sincronizzati in tempo reale. I PIN rimangono solo su questo dispositivo.</div>
+
+      <div class="card" style="border:1px solid rgba(108,159,255,.4);background:rgba(108,159,255,.04)">
+        <div class="card-title">🔧 Ricalcolo e riparazione dati</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Rimuove transazioni ricorrenti duplicate nel periodo, ricarica tutte le transazioni da Firestore e ricalcola saldo, portafoglio, statistiche e grafici.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Dal</label>
+            <input type="date" id="repair-from" style="font-size:13px;padding:7px 10px"></div>
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Al</label>
+            <input type="date" id="repair-to" style="font-size:13px;padding:7px 10px"></div>
+          <button class="btn btn-primary" onclick="repairDati()" style="align-self:flex-end">🔄 Ricalcola</button>
+        </div>
+        <div id="repair-log" style="display:none;background:var(--surface2);border-radius:10px;padding:12px;font-size:12px;line-height:2;max-height:260px;overflow-y:auto"></div>
+      </div>
       <div class="card" style="border:1px solid var(--accent);background:linear-gradient(135deg,rgba(108,159,255,.06),rgba(180,143,255,.04))">
         <div class="card-title">© Crediti</div>
         <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
@@ -1520,7 +1533,10 @@ const ALL_CATS=[...CATEGORIES.uscita,...CATEGORIES.entrata];
 function catById(id){return ALL_CATS.find(c=>c.id===id)||{label:'Altro',icon:'📦',color:'#7a7f94'};}
 // I prelievi bancomat NON sono spese reali — sono trasferimenti interni conto→portafoglio
 // Le spese reali sono quelle che poi vengono registrate con metodo contanti
-function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo';}
+// isSpesaReale: usata per il SALDO DISPONIBILE — esclude carta (già nel saldo conto) e prelievi
+function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo'&&t.metodo!=='carta'&&(!t.split||!t.split.some(s=>s.metodo==='carta'));}
+// isSpesaStat: usata per STATISTICHE e GRAFICI — include carta ma esclude prelievi
+function isSpesaStat(t){return t.tipo==='uscita'&&t.categoria!=='prelievo';}
 window.populateCatSelect=function(selId,tipo){
   const sel=document.getElementById(selId),cats=CATEGORIES[tipo]||CATEGORIES.uscita,g={};
   cats.forEach(c=>{if(!g[c.group])g[c.group]=[];g[c.group].push(c);});
@@ -1528,7 +1544,7 @@ window.populateCatSelect=function(selId,tipo){
 };
 
 // ===== STATE =====
-let state={transactions:[],allTransactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
+let state={transactions:[],budgets:{},events:[],goals:[],liste:[],ricorrenti:[],settings:{names:['',''],cartaLimite:0,theme:'dark-midnight'},saldi:[],birthdays:[],buoni:[],portafoglio:{io:0,lei:0},note:[],notePrivate:[]};
 let isChildMode=false,pinTarget='adult',charts={};
 
 // ===== PROFILI — Firestore-backed =====
@@ -1833,45 +1849,9 @@ function setSyncStatus(s){const dot=document.getElementById('sync-dot'),lbl=docu
 
 // ===== FIREBASE =====
 let unsubTx=null;
-const unsubPastTx={}; // listener attivi per i mesi precedenti
-
 function listenTransactions(){
   if(unsubTx)unsubTx();
-  unsubTx=onSnapshot(collection(db,'transactions',monthKey(),'items'),snap=>{
-    state.transactions=snap.docs.map(d=>({id:d.id,...d.data()}));
-    rebuildAllTransactions();
-    renderAll();
-    setSyncStatus('online');
-  },()=>setSyncStatus('error'));
-  // Ascolta in live anche gli ultimi 6 mesi precedenti per il saldo multi-mese
-  listenPastMonths(6);
-}
-
-function listenPastMonths(num){
-  // Cancella listener precedenti che non servono più
-  Object.keys(unsubPastTx).forEach(mk=>{
-    let m=viewMonth,y=viewYear;
-    // Se il mese non è nei num mesi precedenti al mese corrente, cancella
-    let valid=false;
-    for(let i=1;i<=num;i++){let mm=viewMonth-i,yy=viewYear;while(mm<0){mm+=12;yy--;}if(`${yy}-${String(mm+1).padStart(2,'0')}`===mk){valid=true;break;}}
-    if(!valid){unsubPastTx[mk]();delete unsubPastTx[mk];delete historyCache[mk];}
-  });
-  for(let i=1;i<=num;i++){
-    let m=viewMonth-i,y=viewYear;while(m<0){m+=12;y--;}
-    const mk=`${y}-${String(m+1).padStart(2,'0')}`;
-    if(unsubPastTx[mk])continue; // già in ascolto
-    unsubPastTx[mk]=onSnapshot(collection(db,'transactions',mk,'items'),snap=>{
-      historyCache[mk]=snap.docs.map(d=>({id:d.id,...d.data()}));
-      rebuildAllTransactions();
-      renderDashboard(); // aggiorna saldo quando cambia un mese storico
-    },()=>{});
-  }
-}
-
-function rebuildAllTransactions(){
-  // Flat array di tutte le transazioni: mese corrente + storici
-  const past=Object.values(historyCache).flat();
-  state.allTransactions=[...state.transactions,...past];
+  unsubTx=onSnapshot(collection(db,'transactions',monthKey(),'items'),snap=>{state.transactions=snap.docs.map(d=>({id:d.id,...d.data()}));renderAll();setSyncStatus('online');},()=>setSyncStatus('error'));
 }
 function listenShared(){
   onSnapshot(doc(db,'shared','budgets'),snap=>{state.budgets=snap.exists()?snap.data():{};renderPage('budget');});
@@ -2230,19 +2210,17 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // Usa allTransactions (multi-mese) se disponibile
-  const txs=state.allTransactions.length?state.allTransactions:state.transactions;
-  const isIo=t=>t.chi==='1'||t.chi==='io';
-  const isLei=t=>t.chi==='2'||t.chi==='lei';
-  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&isIo(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&isLei(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  // Il portafoglio è calcolato come:
+  // prelievi (categoria='prelievo') - spese con contanti (metodo='contanti_io/lei')
+  // su TUTTE le transazioni caricate (mese corrente)
+  const txs=state.transactions;
+  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='1'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='2'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const entrateIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const entrateLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   return{
-    io:Math.max(0,Math.round((prelIo+entrateIo-speseIo)*100)/100),
-    lei:Math.max(0,Math.round((prelLei+entrateLei-speseLei)*100)/100)
+    io:Math.max(0,Math.round((prelIo-speseIo)*100)/100),
+    lei:Math.max(0,Math.round((prelLei-speseLei)*100)/100)
   };
 }
 function renderPortafoglio(){
@@ -2520,8 +2498,8 @@ function checkAnomalieQuick(){
   const anomalie=[];
   const catIds=new Set([...curr,...allPast].map(t=>t.categoria));
   catIds.forEach(cid=>{
-    const c=curr.filter(t=>isSpesaReale(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0);
-    const p=allPast.filter(t=>isSpesaReale(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0);
+    const c=curr.filter(t=>isSpesaStat(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0);
+    const p=allPast.filter(t=>isSpesaStat(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0);
     if(p<5)return;
     const media=p/Object.keys(historyCache).length;
     const pct=media>0?Math.round((c-media)/media*100):0;
@@ -2545,21 +2523,22 @@ function renderDashboard(){
   const txs=state.transactions,td=today();
   const mkStart=monthKey()+'-01';
   const txThisMonth=txs.filter(t=>t.data>=mkStart&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const eAll=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uAll=txs.filter(t=>t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const entrate=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uscite=txThisMonth.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
+  const eAll=txs.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uAll=txs.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
 
-  // SALDO DISPONIBILE = saldi manuali + contanti + buoni +/- TUTTE le tx (mese corrente + storici)
+  // SALDO DISPONIBILE = saldi manuali + contanti + buoni + entrate reali - uscite reali (NO carta, già nel saldo conto)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const allTx=state.allTransactions.length?state.allTransactions:state.transactions;
-  const entrateAll=allTx.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteAll=allTx.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateAll-usciteAll;
+  // Usa tutte le tx caricate (mese corrente + storici in cache) per il saldo
+  const allTxFlat=[...txs,...Object.values(historyCache).flat()];
+  const entrateRealiFull=allTxFlat.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteRealiFull=allTxFlat.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiFull-usciteRealiFull;
 
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
   const usatoCarta=txThisMonth.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
@@ -2664,7 +2643,7 @@ function renderDashboard(){
   // CATEGORIE — pillole cliccabili + barre (solo mese visualizzato)
   const mk=monthKey();
   const txsMese=txs.filter(t=>t.data&&t.data.startsWith(mk));
-  const bycat={};txsMese.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  const bycat={};txsMese.filter(t=>isSpesaStat(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   const max=sorted[0]?.[1]||1;
   // Pillole rapide
@@ -2707,18 +2686,18 @@ function renderDashboardClassica(){
   const mk=monthKey();
   const mkStart=mk+'-01';
   const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
-  const entrate=txThisMonth.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  // Saldo ad oggi = patrimonio reale +/- TUTTE le tx (mese corrente + storici)
+  const entrate=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const uscite=txThisMonth.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
+  // Saldo ad oggi = saldi manuali + contanti + buoni + entrate - uscite reali (NO carta)
   const totaleConti=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const allTx2=state.allTransactions.length?state.allTransactions:state.transactions;
-  const entrateAll2=allTx2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
-  const usciteAll2=allTx2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateAll2-usciteAll2;
+  const allTxFlat2=[...txs,...Object.values(historyCache).flat()];
+  const entrateRealiFull2=allTxFlat2.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteRealiFull2=allTxFlat2.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const sOra=totaleConti+totaleContanti+totaleBuoni+entrateRealiFull2-usciteRealiFull2;
   // Saldo a fine mese = sOra + ricorrenti future non ancora inserite
   const oggi=new Date();
   const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
@@ -2761,7 +2740,7 @@ function renderDashboardClassica(){
   if(!cw){cw=document.createElement('div');cw.id='carta-classic-wrap';sg.after(cw);}
   if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid" style="margin-bottom:10px"><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div></div><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Disponibile</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div></div></div>`;}else cw.innerHTML='';
   renderPortafoglio();renderReminders();checkAnomalieQuick();renderRicorrentiDash();
-  const bycat={};txThisMonth.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  const bycat={};txThisMonth.filter(t=>isSpesaStat(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;
   const bd=document.getElementById('cat-breakdown');
   if(bd){if(!sorted.length)bd.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Nessuna spesa</div>';
@@ -3528,7 +3507,7 @@ async function renderStorico(){
     const mk=`${y}-${String(m+1).padStart(2,'0')}`;
     const txs=i===0?state.transactions:(history[mk]||[]);
     const entrate=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-    const uscite=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+    const uscite=txs.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
     months.push({mk,m,y,txs,entrate,uscite,saldo:entrate-uscite});
   }
   // Riepilogo complessivo
@@ -3548,7 +3527,7 @@ async function renderStorico(){
   // Dettaglio per mese
   months.forEach(({mk,m,y,txs,entrate,uscite,saldo})=>{
     if(!txs.length)return;
-    const bycat={};txs.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+    const bycat={};txs.filter(t=>isSpesaStat(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
     const topCat=Object.entries(bycat).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,amt])=>{const c=catById(id);return`${c.icon} €${fmt(amt)}`;}).join(' · ');
     html+=`
       <div class="card">
@@ -3586,7 +3565,7 @@ async function renderBudget(){
   // Previsione fine mese
   const oggi=new Date(),giornoOggi=oggi.getDate(),giorniMese=new Date(viewYear,viewMonth+1,0).getDate();
   const txsCurr=state.transactions;
-  const spesaOggi=txsCurr.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+  const spesaOggi=txsCurr.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
   const projFine=giornoOggi>0?Math.round(spesaOggi/giornoOggi*giorniMese*100)/100:spesaOggi;
   const M=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
   if(prevEl)prevEl.innerHTML=`
@@ -3595,15 +3574,15 @@ async function renderBudget(){
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <div style="flex:1"><div style="font-size:11px;color:var(--muted)">Speso finora</div><div style="font-family:var(--font-mono);font-size:18px;color:var(--red)">€${fmt(spesaOggi)}</div></div>
         <div style="flex:1"><div style="font-size:11px;color:var(--muted)">Proiezione fine mese</div><div style="font-family:var(--font-mono);font-size:18px;color:var(--gold)">€${fmt(projFine)}</div></div>
-        <div style="flex:1"><div style="font-size:11px;color:var(--muted)">${M[mPrec]} (mese scorso)</div><div style="font-family:var(--font-mono);font-size:18px;color:var(--muted)">€${fmt(txsPrec.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0))}</div></div>
+        <div style="flex:1"><div style="font-size:11px;color:var(--muted)">${M[mPrec]} (mese scorso)</div><div style="font-family:var(--font-mono);font-size:18px;color:var(--muted)">€${fmt(txsPrec.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0))}</div></div>
       </div>
     </div>`;
   // Controlla alert budget
   const alerts=[];
   el.innerHTML=CATEGORIES.uscita.filter(c=>state.budgets[c.id]).map(cat=>{
     const limit=state.budgets[cat.id];
-    const spent=txsCurr.filter(t=>isSpesaReale(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
-    const spentPrec=txsPrec.filter(t=>isSpesaReale(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
+    const spent=txsCurr.filter(t=>isSpesaStat(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
+    const spentPrec=txsPrec.filter(t=>isSpesaStat(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
     const p=Math.min((spent/limit)*100,100);
     const over=spent>limit,warn=p>=80&&!over;
     const bc=over?'var(--red)':warn?'var(--gold)':'var(--green)';
@@ -3807,7 +3786,7 @@ async function renderPrevisionale(){
   const rientroEl=document.getElementById('prev-rientro-content');
   const sforamenti=CATEGORIES.uscita.filter(c=>state.budgets[c.id]).map(cat=>{
     const limit=state.budgets[cat.id];
-    const spent=currTxs.filter(t=>isSpesaReale(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
+    const spent=currTxs.filter(t=>isSpesaStat(t)&&t.categoria===cat.id).reduce((a,t)=>a+t.importo,0);
     return{cat,limit,spent,sforamento:spent-limit};
   }).filter(x=>x.sforamento>0||x.spent/x.limit>=0.7);
   if(!sforamenti.length){
@@ -3992,7 +3971,7 @@ async function renderAnalisiPersona(){
     <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Confronto mese per mese — le celle più scure = più spesa.</div>`;
   const catIds=new Set(months.flatMap(mo=>mo.txs.filter(t=>t.tipo==='uscita').map(t=>t.categoria)));
   const catTotali={};
-  catIds.forEach(cid=>{catTotali[cid]=months.reduce((a,mo)=>a+mo.txs.filter(t=>isSpesaReale(t)&&t.categoria===cid).reduce((s,t)=>s+t.importo,0),0);});
+  catIds.forEach(cid=>{catTotali[cid]=months.reduce((a,mo)=>a+mo.txs.filter(t=>isSpesaStat(t)&&t.categoria===cid).reduce((s,t)=>s+t.importo,0),0);});
   const topCats=Object.entries(catTotali).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([id])=>id);
 
   // Header mesi
@@ -4003,7 +3982,7 @@ async function renderAnalisiPersona(){
 
   topCats.forEach(cid=>{
     const c=catById(cid);
-    const vals=months.map(mo=>mo.txs.filter(t=>isSpesaReale(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0));
+    const vals=months.map(mo=>mo.txs.filter(t=>isSpesaStat(t)&&t.categoria===cid).reduce((a,t)=>a+t.importo,0));
     const maxVal=Math.max(...vals,1);
     const tot=vals.reduce((a,v)=>a+v,0);
     // Tendenza: confronta prima metà vs seconda metà
@@ -4085,7 +4064,7 @@ async function renderGrafici(){
     const mk=`${y}-${String(m+1).padStart(2,'0')}`;
     const txs=i===0?state.transactions:(history[mk]||[]);
     const e=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-    const u=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+    const u=txs.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
     cumS+=e-u;labels.push(`${MN[m]} ${y}`);eD.push(+e.toFixed(2));uD.push(+u.toFixed(2));sD.push(+cumS.toFixed(2));
   }
   const isDark=!document.body.getAttribute('data-theme').startsWith('light');
@@ -4140,13 +4119,13 @@ function renderReport(){
     // Per range multi-mese mostriamo quello che abbiamo in cache
     const txs=state.transactions.filter(t=>t.data>=from&&t.data<=to);
     const entrate=txs.filter(t=>t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-    const uscite=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
+    const uscite=txs.filter(t=>isSpesaStat(t)).reduce((a,t)=>a+t.importo,0);
     const saldo=entrate-uscite;
     const conto=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='conto').reduce((a,t)=>a+t.importo,0);
     const carta=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='carta').reduce((a,t)=>a+t.importo,0);
     const contIo=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='contanti_io').reduce((a,t)=>a+t.importo,0);
     const contLei=txs.filter(t=>t.tipo==='uscita'&&t.metodo==='contanti_lei').reduce((a,t)=>a+t.importo,0);
-    const bycat={};txs.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+    const bycat={};txs.filter(t=>isSpesaStat(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
     const catRows=Object.entries(bycat).sort((a,b)=>b[1]-a[1]).map(([id,amt])=>{const c=catById(id);return`<div class="report-row"><span>${c.icon} ${c.label}</span><span style="font-family:var(--font-mono);color:var(--red)">-€${fmt(amt)}</span></div>`;}).join('');
     const byChi={};txs.filter(t=>t.tipo==='uscita').forEach(t=>{byChi[t.chi]=(byChi[t.chi]||0)+t.importo;});
     const chiRows=Object.entries(byChi).map(([chi,amt])=>{const name=chi==='1'?names[0]:chi==='2'?names[1]:'Entrambi';return`<div class="report-row"><span>${name}</span><span style="font-family:var(--font-mono);color:var(--red)">€${fmt(amt)}</span></div>`;}).join('');
@@ -4409,6 +4388,67 @@ function shouldNotify(tipo){
 }
 
 let namesTimer,cartaTimer;
+
+window.repairDati=async function(){
+  const fromDate=document.getElementById('repair-from')?.value;
+  const toDate=document.getElementById('repair-to')?.value||today();
+  const log=document.getElementById('repair-log');
+  if(!fromDate){toast('Inserisci la data di inizio','err');return;}
+  if(fromDate>toDate){toast('La data di inizio deve essere prima della fine','err');return;}
+  const logLine=(msg,color='')=>{if(!log)return;log.style.display='block';log.innerHTML+=`<div style="color:${color||'var(--text)'}">${msg}</div>`;log.scrollTop=log.scrollHeight;};
+  log.style.display='block';log.innerHTML='';
+  logLine('⏳ Lettura transazioni da Firestore...','var(--muted)');
+  const{getDocs:gd}=await import('https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js');
+  // Calcola mesi da coprire
+  const mesi=[];
+  const cur=new Date(fromDate+'T12:00:00'),fine=new Date(toDate+'T12:00:00');
+  while(cur<=fine){const mk=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}`;if(!mesi.includes(mk))mesi.push(mk);cur.setMonth(cur.getMonth()+1);}
+  logLine(`📅 Mesi: ${mesi.join(', ')}','var(--muted)'`);
+  // Leggi tutte le tx
+  let tuttiTx=[];
+  for(const mk of mesi){
+    const snap=await gd(collection(db,'transactions',mk,'items'));
+    const txMk=snap.docs.map(d=>({id:d.id,mk,...d.data()}));
+    tuttiTx=tuttiTx.concat(txMk);
+    logLine(`  ✓ ${mk}: ${txMk.length} transazioni`,'var(--muted)');
+  }
+  const txRange=tuttiTx.filter(t=>t.data>=fromDate&&t.data<=toDate);
+  logLine(`📊 Nel range: ${txRange.length} transazioni`);
+  // Rimuovi duplicati
+  logLine('','');logLine('🔍 Ricerca duplicati...','var(--accent)');
+  const seen={};const daEliminare=[];
+  txRange.sort((a,b)=>(a.creato?.seconds||0)-(b.creato?.seconds||0));
+  txRange.forEach(t=>{if(!t.ricorrenteId)return;const key=`${t.ricorrenteId}_${t.data}`;if(seen[key])daEliminare.push(t);else seen[key]=t;});
+  if(!daEliminare.length){logLine('✅ Nessun duplicato trovato','var(--green)');}
+  else{
+    logLine(`🗑️ ${daEliminare.length} duplicati da rimuovere...`,'var(--red)');
+    for(const t of daEliminare){
+      try{await deleteDoc(doc(db,'transactions',t.mk,'items',t.id));logLine(`  ✓ Rimosso: ${t.desc||'?'} — ${t.data} (€${fmt(t.importo||0)})','var(--muted)'`);}
+      catch(e){logLine(`  ⚠️ Errore: ${e.message}','var(--red)'`);}
+    }
+    logLine(`✅ ${daEliminare.length} duplicati rimossi','var(--green)'`);
+  }
+  // Ricarica mese corrente + aggiorna cache storici
+  logLine('','');logLine('🔄 Ricaricamento da Firestore...','var(--accent)');
+  const mkCorrente=monthKey();
+  for(const mk of mesi){
+    const snap=await gd(collection(db,'transactions',mk,'items'));
+    const txs=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(mk===mkCorrente)state.transactions=txs;
+    historyCache[mk]=txs;
+    logLine(`  ✓ ${mk}: ${txs.length} transazioni ricaricate`,'var(--muted)');
+  }
+  // Ricalcola e ridisegna tutto
+  logLine('','');logLine('📈 Ricalcolo saldo, portafoglio, statistiche...','var(--accent)');
+  renderDashboard();
+  const activePage=document.querySelector('.page.active')?.id;
+  if(activePage)renderPage(activePage.replace('page-',''));
+  logLine('  ✓ Saldo disponibile aggiornato','var(--muted)');
+  logLine('  ✓ Portafoglio ricalcolato','var(--muted)');
+  logLine('  ✓ Statistiche e grafici aggiornati','var(--muted)');
+  logLine('','');logLine('🎉 Completato!','var(--green)');
+  toast('✅ Ricalcolo completato');
+};
 window.saveNames=function(){clearTimeout(namesTimer);namesTimer=setTimeout(async()=>{await saveShared('settings',{...state.settings,names:[document.getElementById('name1').value,document.getElementById('name2').value]});toast('Nomi salvati ✓');},800);};
 window.saveCartaLimite=async function(immediate=false){
   clearTimeout(cartaTimer);
