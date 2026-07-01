@@ -893,7 +893,7 @@
     <div class="section-header"><div class="section-title">Saldi conti</div><button class="btn btn-primary btn-sm" onclick="openSaldoModal()">+ Conto</button></div>
     <div class="conto-grid" id="conto-grid"></div>
     <div class="card"><div class="card-title">Aggiorna saldo</div><div id="saldi-list"></div></div>
-    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile si aggiorna automaticamente: le entrate (conto e contanti) registrate dopo questa data vengono aggiunte, le uscite reali vengono sottratte. Aggiorna periodicamente per mantenere tutto allineato.</div>
+    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile si aggiorna automaticamente con le transazioni successive: entrate aggiunte, uscite reali sottratte (carta esclusa). Aggiorna periodicamente per mantenere tutto allineato.</div>
   </div>
 
   <!-- REPORT -->
@@ -2216,17 +2216,13 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // Usa mese corrente + storici in cache per avere il quadro completo
   const txs=[...state.transactions,...Object.values(historyCache).flat()];
   const isIo=t=>t.chi==='1'||t.chi==='io';
   const isLei=t=>t.chi==='2'||t.chi==='lei';
-  // Prelievi bancomat (conto → portafoglio)
   const prelIo=txs.filter(t=>t.categoria==='prelievo'&&isIo(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const prelLei=txs.filter(t=>t.categoria==='prelievo'&&isLei(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  // Entrate dirette in contanti (mance, rimborsi cash, ecc.)
   const entrateIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
   const entrateLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
-  // Spese pagate in contanti
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   return{
@@ -2650,10 +2646,26 @@ function renderDashboard(){
   renderReminders();
   checkAnomalieQuick();
 
-  // CATEGORIE — pillole cliccabili + barre (solo mese visualizzato)
+  // CATEGORIE — tutto il mese: tx inserite (anche future) + ricorrenti non ancora inserite
   const mk=monthKey();
   const txsMese=txs.filter(t=>t.data&&t.data.startsWith(mk));
-  const bycat={};txsMese.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  const bycat={};
+  // 1. Transazioni già inserite (tutte, anche con data futura)
+  txsMese.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  // 2. Ricorrenti del mese non ancora inserite come transazioni
+  const txInseriteMk=new Set(txsMese.filter(t=>t.ricorrenteId).map(t=>`${t.ricorrenteId}_${t.data}`));
+  const txPerDataImportoCat=new Set(txsMese.map(t=>`${t.data}_${t.importo}_${t.categoria}`));
+  const oggi=new Date();
+  const ultimoGiorno=new Date(oggi.getFullYear(),oggi.getMonth()+1,0).getDate();
+  for(let g=oggi.getDate()+1;g<=ultimoGiorno;g++){
+    const dateStr=`${oggi.getFullYear()}-${String(oggi.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    (state.ricorrenti||[]).forEach(r=>{
+      if(!r.inizio||r.tipo==='entrata')return;
+      if(txInseriteMk.has(`${r.id}_${dateStr}`))return;
+      if(txPerDataImportoCat.has(`${dateStr}_${r.importo}_${r.categoria}`))return;
+      if(shouldInsert(r,dateStr))bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo;
+    });
+  }
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);
   const max=sorted[0]?.[1]||1;
   // Pillole rapide
@@ -2747,7 +2759,22 @@ function renderDashboardClassica(){
   if(!cw){cw=document.createElement('div');cw.id='carta-classic-wrap';sg.after(cw);}
   if(limCarta>0){const p=Math.min((usatoCarta/limCarta)*100,100);const bc=p>=90?'var(--red)':p>=70?'var(--gold)':'var(--purple)';cw.innerHTML=`<div class="carta-grid" style="margin-bottom:10px"><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Usato carta</div><div class="amount purple">€${fmt(usatoCarta)}</div></div><div class="carta-card" onclick="drillDown('metodo','carta','💜 Carta')" style="cursor:pointer"><div class="label">💜 Disponibile</div><div class="amount ${usatoCarta<limCarta?'purple':'red'}">€${fmt(Math.max(limCarta-usatoCarta,0))}</div></div></div>`;}else cw.innerHTML='';
   renderPortafoglio();renderReminders();checkAnomalieQuick();renderRicorrentiDash();
-  const bycat={};txThisMonth.filter(t=>isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  const bycat={};
+  // Tx inserite tutto il mese (anche future)
+  txs.filter(t=>t.data&&t.data.startsWith(mk)&&isSpesaReale(t)).forEach(t=>{bycat[t.categoria]=(bycat[t.categoria]||0)+t.importo;});
+  // Ricorrenti future non ancora inserite
+  const txInsMk=new Set(txs.filter(t=>t.ricorrenteId&&t.data.startsWith(mk)).map(t=>`${t.ricorrenteId}_${t.data}`));
+  const txPDI=new Set(txs.filter(t=>t.data.startsWith(mk)).map(t=>`${t.data}_${t.importo}_${t.categoria}`));
+  const oggiC=new Date(),ulGC=new Date(oggiC.getFullYear(),oggiC.getMonth()+1,0).getDate();
+  for(let g=oggiC.getDate()+1;g<=ulGC;g++){
+    const ds=`${oggiC.getFullYear()}-${String(oggiC.getMonth()+1).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+    (state.ricorrenti||[]).forEach(r=>{
+      if(!r.inizio||r.tipo==='entrata')return;
+      if(txInsMk.has(`${r.id}_${ds}`))return;
+      if(txPDI.has(`${ds}_${r.importo}_${r.categoria}`))return;
+      if(shouldInsert(r,ds))bycat[r.categoria]=(bycat[r.categoria]||0)+r.importo;
+    });
+  }
   const sorted=Object.entries(bycat).sort((a,b)=>b[1]-a[1]);const max=sorted[0]?.[1]||1;
   const bd=document.getElementById('cat-breakdown');
   if(bd){if(!sorted.length)bd.innerHTML='<div class="empty"><div class="empty-icon">📊</div>Nessuna spesa</div>';
