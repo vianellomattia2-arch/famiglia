@@ -893,7 +893,7 @@
     <div class="section-header"><div class="section-title">Saldi conti</div><button class="btn btn-primary btn-sm" onclick="openSaldoModal()">+ Conto</button></div>
     <div class="conto-grid" id="conto-grid"></div>
     <div class="card"><div class="card-title">Aggiorna saldo</div><div id="saldi-list"></div></div>
-    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile nella dashboard si aggiorna automaticamente: le entrate registrate dopo questa data vengono aggiunte, le uscite (esclusa la carta) vengono sottratte. Aggiorna il saldo ogni volta che controlli il conto bancario per mantenere tutto allineato.</div>
+    <div class="tip"><div class="tip-header">🏦 Come funziona</div>Inserisci il saldo reale del conto oggi e premi <strong>Aggiorna</strong>. Da quel momento il saldo disponibile si aggiorna automaticamente: le entrate (conto e contanti) registrate dopo questa data vengono aggiunte, le uscite reali vengono sottratte. Aggiorna periodicamente per mantenere tutto allineato.</div>
   </div>
 
   <!-- REPORT -->
@@ -1532,36 +1532,16 @@ function catById(id){return ALL_CATS.find(c=>c.id===id)||{label:'Altro',icon:'�
 // Le spese reali sono quelle che poi vengono registrate con metodo contanti
 function isSpesaReale(t){return t.tipo==='uscita'&&t.categoria!=='prelievo';}
 
-// Calcola il saldo reale aggiornato partendo dal saldo base di ciascun conto
-// + entrate reali dopo la data di aggiornamento (no carta, no trasferimenti)
-// - uscite reali dopo la data di aggiornamento (no carta, no prelievi)
 function calcolaSaldoReale(){
   const td=today();
-  // Tutte le transazioni disponibili (mese corrente + storici in cache)
   const allTx=[...state.transactions,...Object.values(historyCache).flat()];
-  // Saldo base di tutti i conti
   const totaleBase=state.saldi.reduce((a,s)=>a+(s.amount||0),0);
-  // Data di riferimento più recente tra tutti i conti (o oggi se non c'è)
-  const dataRef=state.saldi.reduce((latest,s)=>{
-    const d=s.updated||'1970-01-01';
-    return d>latest?d:latest;
-  },'1970-01-01');
-  if(dataRef==='1970-01-01')return{saldo:totaleBase,dataRef:null};
-  // Transazioni tra dataRef (esclusa) e oggi (incluso)
+  const dataRef=state.saldi.reduce((latest,s)=>{const d=s.updated||'1970-01-01';return d>latest?d:latest;},'1970-01-01');
+  if(dataRef==='1970-01-01')return{saldo:totaleBase,dataRef:null,totaleBase,entrateDopoRef:0,usciteDopoRef:0};
   const txDopoRef=allTx.filter(t=>t.data>dataRef&&t.data<=td);
-  const entrateDopoRef=txDopoRef
-    .filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento')
-    .reduce((a,t)=>a+t.importo,0);
-  const usciteDopoRef=txDopoRef
-    .filter(t=>isSpesaReale(t)&&t.metodo!=='carta')
-    .reduce((a,t)=>a+t.importo,0);
-  return{
-    saldo:totaleBase+entrateDopoRef-usciteDopoRef,
-    totaleBase,
-    entrateDopoRef,
-    usciteDopoRef,
-    dataRef
-  };
+  const entrateDopoRef=txDopoRef.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
+  const usciteDopoRef=txDopoRef.filter(t=>isSpesaReale(t)&&t.metodo!=='carta').reduce((a,t)=>a+t.importo,0);
+  return{saldo:totaleBase+entrateDopoRef-usciteDopoRef,totaleBase,entrateDopoRef,usciteDopoRef,dataRef};
 }
 window.populateCatSelect=function(selId,tipo){
   const sel=document.getElementById(selId),cats=CATEGORIES[tipo]||CATEGORIES.uscita,g={};
@@ -2236,17 +2216,22 @@ function renderAll(){const a=document.querySelector('.page.active')?.id?.replace
 
 
 function calcolaPortafoglio(){
-  // Il portafoglio è calcolato come:
-  // prelievi (categoria='prelievo') - spese con contanti (metodo='contanti_io/lei')
-  // su TUTTE le transazioni caricate (mese corrente)
-  const txs=state.transactions;
-  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='1'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
-  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&t.chi==='2'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  // Usa mese corrente + storici in cache per avere il quadro completo
+  const txs=[...state.transactions,...Object.values(historyCache).flat()];
+  const isIo=t=>t.chi==='1'||t.chi==='io';
+  const isLei=t=>t.chi==='2'||t.chi==='lei';
+  // Prelievi bancomat (conto → portafoglio)
+  const prelIo=txs.filter(t=>t.categoria==='prelievo'&&isIo(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  const prelLei=txs.filter(t=>t.categoria==='prelievo'&&isLei(t)&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
+  // Entrate dirette in contanti (mance, rimborsi cash, ecc.)
+  const entrateIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  const entrateLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='entrata').reduce((a,t)=>a+t.importo,0);
+  // Spese pagate in contanti
   const speseIo=txs.filter(t=>t.metodo==='contanti_io'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   const speseLei=txs.filter(t=>t.metodo==='contanti_lei'&&t.tipo==='uscita').reduce((a,t)=>a+t.importo,0);
   return{
-    io:Math.max(0,Math.round((prelIo-speseIo)*100)/100),
-    lei:Math.max(0,Math.round((prelLei-speseLei)*100)/100)
+    io:Math.max(0,Math.round((prelIo+entrateIo-speseIo)*100)/100),
+    lei:Math.max(0,Math.round((prelLei+entrateLei-speseLei)*100)/100)
   };
 }
 function renderPortafoglio(){
@@ -2553,14 +2538,12 @@ function renderDashboard(){
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
   const eAll=txs.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
   const uAll=txs.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-
-  // SALDO DISPONIBILE = saldo base conto + tx reali dopo la data di aggiornamento + contanti + buoni
   const saldoReale=calcolaSaldoReale();
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
   const tuttiBuoni=state.buoni.reduce((a,b)=>a+(b.qty||0),0);
   const totaleBuoni=Math.max(0,tuttiBuoni)*7;
-  const totaleConti=saldoReale.saldo; // saldo conto già aggiornato con le tx
+  const totaleConti=saldoReale.saldo;
   const sOra=totaleConti+totaleContanti+totaleBuoni;
 
   const limCarta=parseFloat(state.settings.cartaLimite)||0;
@@ -2576,11 +2559,9 @@ function renderDashboard(){
   if(ha){ha.textContent=`€${fmt(Math.abs(sOra))}`;ha.style.color='#fff';}
   const hs=document.getElementById('dash-hero-sub');
   if(hs){
-    const deltaConti=saldoReale.entrateDopoRef||0;
-    const deltaUscite=saldoReale.usciteDopoRef||0;
     const refLabel=saldoReale.dataRef?`base ${formatDate(saldoReale.dataRef)}`:'saldo manuale';
     hs.textContent=`🏦 €${fmt(saldoReale.totaleBase||totaleConti)} (${refLabel}) · 💵 €${fmt(totaleContanti)} · 🎟️ €${fmt(totaleBuoni)}`;
-    hs.title=`Dal ${saldoReale.dataRef||'—'}: +€${fmt(deltaConti)} entrate, -€${fmt(deltaUscite)} uscite`;
+    hs.title=`Dal ${saldoReale.dataRef||'—'}: +€${fmt(saldoReale.entrateDopoRef||0)} entrate, -€${fmt(saldoReale.usciteDopoRef||0)} uscite`;
   }
   const he=document.getElementById('dash-hero-entrate');if(he)he.textContent=`+€${fmt(entrate)}`;
   const hu=document.getElementById('dash-hero-uscite');if(hu)hu.textContent=`-€${fmt(uscite)}`;
@@ -2717,7 +2698,6 @@ function renderDashboardClassica(){
   const txThisMonth=txs.filter(t=>t.data&&t.data.startsWith(mk)&&t.data<=td);
   const entrate=txThisMonth.filter(t=>t.tipo==='entrata'&&t.categoria!=='trasferimento').reduce((a,t)=>a+t.importo,0);
   const uscite=txThisMonth.filter(t=>isSpesaReale(t)).reduce((a,t)=>a+t.importo,0);
-  // Saldo ad oggi = saldo base conto + tx reali dopo data aggiornamento + contanti + buoni
   const saldoReale=calcolaSaldoReale();
   const portafoglio=calcolaPortafoglio();
   const totaleContanti=(portafoglio.io||0)+(portafoglio.lei||0);
@@ -4120,11 +4100,7 @@ function renderSaldi(){
 }
 window.openSaldoModal=function(){['saldo-name','saldo-emoji'].forEach(id=>document.getElementById(id).value='');document.getElementById('saldo-amount').value='';document.getElementById('saldo-modal').classList.add('open');};
 window.saveSaldo=async function(){const name=document.getElementById('saldo-name').value.trim(),amount=parseFloat(document.getElementById('saldo-amount').value)||0;if(!name){toast('Dai un nome al conto','err');return;}await saveShared('saldi',{list:[...state.saldi,{id:uid(),name,amount,emoji:document.getElementById('saldo-emoji').value.trim()||'🏦',updated:today()}]});document.getElementById('saldo-modal').classList.remove('open');toast('Conto aggiunto ✓');};
-window.updateSaldo=async function(id){
-  const val=parseFloat(document.getElementById('upd-'+id).value)||0;
-  await saveShared('saldi',{list:state.saldi.map(s=>s.id===id?{...s,amount:val,updated:today()}:s)});
-  toast('Saldo aggiornato ✓ — ora il saldo disponibile si aggiornerà automaticamente con le transazioni future');
-};
+window.updateSaldo=async function(id){const val=parseFloat(document.getElementById('upd-'+id).value)||0;await saveShared('saldi',{list:state.saldi.map(s=>s.id===id?{...s,amount:val,updated:today()}:s)});toast('Saldo aggiornato ✓ — le transazioni future aggiorneranno il saldo automaticamente');};
 window.deleteSaldo=async function(id){if(!confirm('Eliminare?'))return;await saveShared('saldi',{list:state.saldi.filter(s=>s.id!==id)});toast('Conto eliminato');};
 
 // ===== REPORT =====
